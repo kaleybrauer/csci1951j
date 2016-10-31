@@ -8859,7 +8859,7 @@
 					// line is coplanar, return origin
 					if ( this.distanceToPoint( line.start ) === 0 ) {
 
-						return result.copy( line.start );
+						return result.copy( SphereGeometry.start );
 
 					}
 
