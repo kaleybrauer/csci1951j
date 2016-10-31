@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 	<title>Interactive Atomistic Environment</title>
 	<meta charset="utf-8">
@@ -11,6 +11,7 @@
 		<!-- I am currently just defaulting energyVal to be the x position of the last moved atom. -->	
 		&nbsp;&nbsp;&nbsp;
 		<span>Timestep: <input type="text" id="timestep" value="0.1" /></span>
+		<br>
 	</div>
 	<style>
 		body {
@@ -60,16 +61,15 @@
 			light.shadow.mapSize.height = 2048;
 			scene.add( light );
 			var geometry = new THREE.SphereGeometry( 150, 300, 300 );
-			var material = new THREE.MeshLambertMaterial( {color: 0x008080} );
 
 			// generalize to allow for different atoms -- right now, two atoms are hardcoded in
-			var atom1 = new THREE.Mesh( geometry, material );
+			var atom1 = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( {color: 0x008080} ) );
 			atom1.position.x = -150
 			atom1.castShadow = true;
 			atom1.receiveShadow = true;
 			scene.add( atom1 );
 			objects.push( atom1 );
-			var atom2 = new THREE.Mesh( geometry, material );
+			var atom2 = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( {color: 0x008080} ) );
 			atom2.position.x = 150
 			atom2.castShadow = true;
 			atom2.receiveShadow = true;
@@ -109,17 +109,16 @@
 				return;
 			}
 			var intersects = raycaster.intersectObjects( objects );
-
-			// need to figure out how to only highlight selected object
 			if ( intersects.length > 0 ) {
 				if ( INTERSECTED != intersects[ 0 ].object ) {
-					if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
-					INTERSECTED = intersects[ 0 ].object;
-					plane.setFromNormalAndCoplanarPoint(
-						camera.getWorldDirection( plane.normal ),
-						INTERSECTED.position );
-					INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-					INTERSECTED.material.emissive.setHex( 0x754200);
+					if ( INTERSECTED ) 
+						INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+						INTERSECTED = intersects[ 0 ].object;
+						plane.setFromNormalAndCoplanarPoint(
+							camera.getWorldDirection( plane.normal ),
+							INTERSECTED.position );
+						INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+						INTERSECTED.material.emissive.setHex( 0x754200 );
 				}
 				container.style.cursor = 'pointer';
 			} else {
@@ -146,7 +145,7 @@
 			event.preventDefault();
 			controls.enabled = true;
 			if ( INTERSECTED ) {
-				energyVal = INTERSECTED.position.x;
+				setEnergy();
 				SELECTED = null;
 			}
 			container.style.cursor = 'auto';
@@ -155,9 +154,12 @@
 			requestAnimationFrame( animate );
 			render();
 		}
+		function setEnergy() {
+			energyVal = SELECTED.position.x;
+			document.getElementById( 'energyVal' ).innerText = energyVal;
+		}
 		function render() {
 			controls.update();
-			document.getElementById( 'energyVal' ).innerText = energyVal;
 			renderer.render( scene, camera );
 		}
 	</script>
