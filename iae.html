@@ -3,16 +3,7 @@
 <head>
 	<title>Interactive Atomistic Environment</title>
 	<meta charset="utf-8">
-
-	<div style="text-align: center">
-		Interactive Atomistic Environment
-		<br>
-		<span>Energy: <span id="energyVal"></span></span>	
-		<!-- I am currently just defaulting energyVal to be the x position of the last moved atom. -->	
-		&nbsp;&nbsp;&nbsp;
-		<span>Timestep: <input type="text" id="timestep" value="0.1" /></span>
-		<br>
-	</div>
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 	<style>
 		body {
 			background-color: #f0f0f0;
@@ -23,13 +14,17 @@
 <body>
 	<script src="three.js"></script>
 	<script src="js/controls/TrackballControls.js"></script>
+	<script src='js/libs/dat.gui.min.js'></script>
 	<script>
 		var container;
 		var camera, controls, scene, renderer;
+		var optionController;
+		var timestep;
+		var energyVal = 0;
+		var systemOption;
 		var objects = [];
 		var plane = new THREE.Plane();
 		var raycaster = new THREE.Raycaster();
-		var energyVal = 0;
 		var mouse = new THREE.Vector2(),
 		offset = new THREE.Vector3(),
 		intersection = new THREE.Vector3(),
@@ -42,14 +37,6 @@
 			document.body.appendChild( container );
 			camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
 			camera.position.z = 1000;
-			controls = new THREE.TrackballControls( camera );
-			controls.rotateSpeed = 5.0;
-			controls.zoomSpeed = 1.2;
-			controls.panSpeed = 0.8;
-			controls.noZoom = false;
-			controls.noPan = false;
-			controls.staticMoving = true;
-			controls.dynamicDampingFactor = 0.3;
 			scene = new THREE.Scene();
 			scene.add( new THREE.AmbientLight( 0x505050 ) );
 			var light = new THREE.SpotLight( 0xffffff, 1.5 );
@@ -75,12 +62,68 @@
 			renderer.sortObjects = false;
 			container.appendChild( renderer.domElement );
 
+			// placing title
+			var title = document.createElement( 'div' );
+			title.style.position = 'absolute';
+			title.style.top = '10px';
+			title.style.textAlign = 'center';
+			title.style.width = '100%';
+			title.innerHTML = 'Interactive Atomistic Environment';
+			var energy = document.createElement( 'div' );
+			energy.style.position = 'absolute';
+			energy.style.bottom = '10px';
+			energy.style.textAlign = 'left';
+			energy.style.width = '100%';
+			// I am currently just defaulting energyVal to be the x position of the last moved atom.
+			energy.innerHTML = 'Energy: <span id="energyVal" ></span>';
+
+			container.appendChild( title );
+			container.appendChild( energy );
+			document.getElementById( 'energyVal' ).innerText = energyVal;
+
+			setupOptions()
+
 			renderer.domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
 			renderer.domElement.addEventListener( 'mousedown', onDocumentMouseDown, false );
 			renderer.domElement.addEventListener( 'mouseup', onDocumentMouseUp, false );
+
+			controls = new THREE.TrackballControls( camera, renderer.domElement );
+			controls.rotateSpeed = 7.0;
+			controls.zoomSpeed = 1.2;
+			controls.panSpeed = 0.8;
+			controls.noZoom = false;
+			controls.noPan = false;
+			controls.staticMoving = true;
+			controls.dynamicDampingFactor = 0.3;
+			
 			
 			window.addEventListener( 'resize', onWindowResize, false );
-	}
+		}
+		function setupOptions() {
+			// initializing options
+			optionController = {
+				timestep: 0.05,
+				systemOption: "Hydrogen molecule"
+				};
+
+			var folder;
+			var gui = new dat.GUI();
+			// simulation controls
+			folder = gui.addFolder( "Simulation Controls" );
+			folder.add( optionController, "timestep", 0.01, 2.0, 0.01 ).name( "Timestep (s)" ).onChange( render );
+			// setup system
+			folder = gui.addFolder( "Setup System" );
+			folder.add( optionController, "systemOption", [ "Hydrogen molecule", "Option2", "Option3", "Option4", "Option5", "Option6" ] ).name( "System" ).onChange( render );
+
+			var buttonReset = {
+			    resetSys: function() {
+				resetSys();
+			    }
+			};
+			folder.add( buttonReset, 'resetSys' ).name( "Reset System" );
+
+			gui.close();
+		}
 		function onWindowResize() {
 			camera.aspect = window.innerWidth / window.innerHeight;
 			camera.updateProjectionMatrix();
@@ -147,7 +190,16 @@
 			energyVal = SELECTED.position.x;
 			document.getElementById( 'energyVal' ).innerText = energyVal;
 		}
+		function resetSys() {
+			// does nothing yet
+		}
 		function render() {
+//			if ( optionController.timestep !== timestep ||
+//					optionController.systemOption !== systemOption )
+//				{
+//					timestep = optionController.timestep;
+//					systemOption = optionController.systemOption;
+//				}
 			controls.update();
 			renderer.render( scene, camera );
 		}
