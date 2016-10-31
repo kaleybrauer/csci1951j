@@ -3,6 +3,15 @@
 <head>
 	<title>Interactive Atomistic Environment</title>
 	<meta charset="utf-8">
+
+	<div style="text-align: center">
+		Interactive Atomistic Environment
+		<br>
+		<span>Energy: <span id="energyVal"></span></span>	
+		<!-- I am currently just defaulting energyVal to be the x position of the last moved atom. -->	
+		&nbsp;&nbsp;&nbsp;
+		<span>Timestep: <input type="text" id="timestep" value="0.1" /></span>
+	</div>
 	<style>
 		body {
 			background-color: #f0f0f0;
@@ -13,18 +22,20 @@
 <body>
 	<script src="three.js"></script>
 	<script src="js/controls/TrackballControls.js"></script>
-		<script>
+	<script>
 		var container;
 		var camera, controls, scene, renderer;
 		var objects = [];
 		var plane = new THREE.Plane();
 		var raycaster = new THREE.Raycaster();
+		var energyVal = 0;
 		var mouse = new THREE.Vector2(),
 		offset = new THREE.Vector3(),
 		intersection = new THREE.Vector3(),
 		INTERSECTED, SELECTED;
 		init();
 		animate();
+
 		function init() {
 			container = document.createElement( 'div' );
 			document.body.appendChild( container );
@@ -74,13 +85,7 @@
 			renderer.shadowMap.enabled = true;
 			renderer.shadowMap.type = THREE.PCFShadowMap;
 			container.appendChild( renderer.domElement );
-			var info = document.createElement( 'div' );
-			info.style.position = 'absolute';
-			info.style.top = '10px';
-			info.style.width = '100%';
-			info.style.textAlign = 'center';
-			info.innerHTML = 'Interactive Atomistic Environment';
-			container.appendChild( info );
+
 			renderer.domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
 			renderer.domElement.addEventListener( 'mousedown', onDocumentMouseDown, false );
 			renderer.domElement.addEventListener( 'mouseup', onDocumentMouseUp, false );
@@ -104,18 +109,22 @@
 				return;
 			}
 			var intersects = raycaster.intersectObjects( objects );
+
+			// need to figure out how to only highlight selected object
 			if ( intersects.length > 0 ) {
 				if ( INTERSECTED != intersects[ 0 ].object ) {
-					if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+					if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
 					INTERSECTED = intersects[ 0 ].object;
-					INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
 					plane.setFromNormalAndCoplanarPoint(
 						camera.getWorldDirection( plane.normal ),
 						INTERSECTED.position );
+					INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+					INTERSECTED.material.emissive.setHex( 0x754200);
 				}
 				container.style.cursor = 'pointer';
 			} else {
-				if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+				if ( INTERSECTED )
+				INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
 				INTERSECTED = null;
 				container.style.cursor = 'auto';
 			}
@@ -137,6 +146,7 @@
 			event.preventDefault();
 			controls.enabled = true;
 			if ( INTERSECTED ) {
+				energyVal = INTERSECTED.position.x;
 				SELECTED = null;
 			}
 			container.style.cursor = 'auto';
@@ -147,6 +157,7 @@
 		}
 		function render() {
 			controls.update();
+			document.getElementById( 'energyVal' ).innerText = energyVal;
 			renderer.render( scene, camera );
 		}
 	</script>
