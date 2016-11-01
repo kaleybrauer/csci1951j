@@ -45,6 +45,7 @@ var Node = function(atom, aid, position,
     this.mass = mass;
 }
 
+// TODO : fill in this
 Node.prototype.updateForce = function(force){
 	this.force = force
 }
@@ -63,8 +64,18 @@ Node.prototype.getVisited = function(){
 
 Node.prototype.setVisited = function(){
 	this.visited = true
+}
+
+Node.prototype.setVisited = function(node){
 	this.edges.forEach(function(edge){
-        edge.atom2.resetVisited()
+       if(edge.atom2.aid == node.aid){
+            edge.setVisited()
+            node.edges.forEach(function(another){
+            	if(another.atom2.aid == this.aid){
+                	another.edge.setVisited()
+            	}
+            })
+        }
     })
 }
 
@@ -96,7 +107,6 @@ Node.prototype.getNeighbors = function(){
     return neighbors
 }
 
-
 /***********************************************************************************/
 /********************************    Network   *************************************/
 /***********************************************************************************/
@@ -125,6 +135,7 @@ Network.prototype.resetVisited = function(){
 	})
 }
 
+// TODO : fill in this
 Network.prototype.getEnergy = function(){
 	return 100 + Math.random() * 10
 }
@@ -133,7 +144,6 @@ Network.prototype.getEnergy = function(){
 /******************************    Build Network   *********************************/
 /************************************************************************************/
 /***********************************************************************************/
-
 var atomGeo1 = new THREE.SphereGeometry( 80, 100, 100 );
 var atomGeo2 = new THREE.SphereGeometry( 80, 100, 100 );
 var atomGeo3 = new THREE.SphereGeometry( 150, 100, 100 );
@@ -143,9 +153,9 @@ var materialWhite2 = new THREE.MeshLambertMaterial( {color: 0xffffff} )
 var materialGray = new THREE.MeshLambertMaterial( {color: 0x555555} )
 var materialCyan = new THREE.MeshLambertMaterial( {color: 0x008080} )
 
-var atom1 = new THREE.Mesh( atomGeo1, materialWhite1 );
-var atom2 = new THREE.Mesh( atomGeo2, materialWhite2 );
-var atom3 = new THREE.Mesh( atomGeo3, materialCyan );
+var atom1 = new THREE.Mesh(atomGeo1, materialWhite1);
+var atom2 = new THREE.Mesh(atomGeo2, materialWhite2);
+var atom3 = new THREE.Mesh(atomGeo3, materialCyan);
 
 var node1 = new Node(atom1, 1, {x:-250, y:100, z:0})
 var node2 = new Node(atom2, 2, {x:250, y:-100, z:0})
@@ -154,6 +164,46 @@ var node3 = new Node(atom3, 3, {x:0, y:0, z:100})
 node3.addNeighbor(node1)
 node3.addNeighbor(node2)
 
-network = new Network(node3);
-network.addNode(node1)
-network.addNode(node2)
+
+var water = new Network(node3);
+water.addNode(node1)
+water.addNode(node2)
+
+
+var atomGeo1 = new THREE.SphereGeometry( 50, 100, 100 );
+var atomGeo2 = new THREE.SphereGeometry( 50, 100, 100 );
+
+var materialCyan1 = new THREE.MeshLambertMaterial( {color: 0x008080} )
+var materialCyan2 = new THREE.MeshLambertMaterial( {color: 0x008080} )
+
+var atom1 = new THREE.Mesh(atomGeo1, materialWhite1);
+var atom2 = new THREE.Mesh(atomGeo2, materialWhite2);
+
+var node1 = new Node(atom1, 1, {x:-50, y:10, z:0})
+var node2 = new Node(atom2, 2, {x:50, y:-10, z:0})
+
+node1.addNeighbor(node2)
+
+var hydrogen = new Network(node1);
+hydrogen.addNode(node2)
+
+
+var atomGeo1 = new THREE.SphereGeometry( 150, 100, 100 );
+var atomGeo2 = new THREE.SphereGeometry( 150, 100, 100 );
+
+var materialWhite1 = new THREE.MeshLambertMaterial( {color: 0xffffff} )
+var materialWhite2 = new THREE.MeshLambertMaterial( {color: 0xffffff} )
+
+var atom1 = new THREE.Mesh(atomGeo1, materialWhite1);
+var atom2 = new THREE.Mesh(atomGeo2, materialWhite2);
+
+var node1 = new Node(atom1, 1, {x:-250, y:100, z:0})
+var node2 = new Node(atom2, 2, {x:250, y:-100, z:0})
+
+node1.addNeighbor(node2)
+
+var oxygen = new Network(node1);
+oxygen.addNode(node2)
+
+
+var systems = {"Water": water, "Hydrogen": hydrogen, "Oxygen": oxygen}

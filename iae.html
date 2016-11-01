@@ -27,10 +27,10 @@
 		var plane = new THREE.Plane();
 		var raycaster = new THREE.Raycaster();
 		var mouse = new THREE.Vector2(),
-
 		offset = new THREE.Vector3(),
 		intersection = new THREE.Vector3(),
-		INTERSECTED, SELECTED;
+		INTERSECTED, SELECTED, 
+		system = systems["Hydrogen"];
 		init();
 		animate();
 
@@ -47,7 +47,8 @@
 			light.position.set( 0, 500, 2000 );
 			scene.add( light );
 
-		    atomList = network.getNodeList();
+
+		    var atomList = system.getNodeList();
 
 			atomList.forEach(function(node){
 				node.atom.name = "atom:" + node.aid
@@ -57,15 +58,19 @@
 
 				node.edges.forEach(function(edge){
 					if(edge.getVisited() == false){
-						var lineGeo = new THREE.CylinderGeometry(10, 10, edge.atom1.atom.position.distanceTo(edge.atom2.atom.position));
-						var line = new THREE.Mesh(lineGeo, materialGray);
+						var lineGeo = new THREE.Geometry()
+						var lineMaterial = new THREE.LineBasicMaterial({ color: 0xAAAAAA, linewidth: 20 })
+						
+						lineGeo.vertices.push(edge.atom1.position)
+						lineGeo.vertices.push(edge.atom2.position)
+						var line = new THREE.LineSegments(lineGeo, lineMaterial);
+						
 						line.name = "line:" + edge.atom1.aid + ":" + edge.atom2.aid
-
-						line.visible = false // line's rotation is not working now
+						line.visible = true // line's rotation is not working now
 					    
 					    scene.add(line)
 					    // objects.push(line)
-					     console.log(line)
+					    console.log(line)
 					    edge.setVisited()
 					}
 				})
@@ -123,7 +128,6 @@
 			controls.noPan = false;
 			controls.staticMoving = true;
 			controls.dynamicDampingFactor = 0.3;
-			
 			
 			window.addEventListener( 'resize', onWindowResize, false );
 		}
@@ -236,76 +240,26 @@
             var objects = scene.children
 
 			objects.forEach(function(obj){
-                     if(obj.type == "Mesh"){
-                          var ids = obj.name.split(":")
-                          if(ids[0] == "line"){
-                              var aid1 = ids[1], aid2 = ids[2]
-                        
-                              var atom1 = scene.getObjectByName("atom:" + aid1)
-                              var atom2 = scene.getObjectByName("atom:" + aid2);
-                              var p1 = atom1.position, p2 = atom2.position
-                              
-                              var newHeight = p1.distanceTo(p2)
-                              var scaleFactor = newHeight / obj.geometry.parameters.height 
-                              obj.scale.y = scaleFactor;	
+				if(obj.type == "Mesh"){
+                    obj.position.x += Math.random() * (Math.random() < 0.5 ? -1 : 1)
+                    obj.position.y += Math.random() * (Math.random() < 0.5 ? -1 : 1)
+                    obj.position.z += Math.random() * (Math.random() < 0.5 ? -1 : 1)
+				}
 
-                              // to origin
-                              obj.translateX(-1 * obj.position.x)
-                              obj.translateY(-1 * obj.position.y)
-                              obj.translateZ(-1 * obj.position.z)
+				if(obj.type == "LineSegments"){
+					var ids = obj.name.split(":")
+				    var aid1 = ids[1], aid2 = ids[2]    
+                    var atom1 = scene.getObjectByName("atom:" + aid1)
+                    var atom2 = scene.getObjectByName("atom:" + aid2);
+                    var p1 = atom1.position, p2 = atom2.position
 
-                              var dir = new THREE.Vector3(0, 0, 0)
-                              var axis = new THREE.Vector3(0, 0, 1)
-                              dir.subVectors(p2, p1)
-                             
-                              var curDir = obj.getWorldDirection(), curDir2 = curDir.clone()
-                              curDir.normalize()
-                              curDir2.normalize()
-							  dir.normalize()
+                    obj.geometry.vertices[0]= p1.clone()
+                    obj.geometry.vertices[1]= p2.clone()
 
-							  var v = new THREE.Vector3().crossVectors(curDir, dir)
-							  var c = curDir2.dot(dir)
-							  var fc = 1 / (1 + c)
-							  var vmat = new THREE.Matrix4()
-							  vmat.set(
-							  	0, -1 * v.z, v.y, 0,
-							  	v.z, 0, -1 * v.x, 0,
-							  	-1 * v.y, v.x, 0, 0,
-							  	0, 0, 0, 1)
-							  var sqmat =  vmat.clone()
-							  sqmat.multiply(vmat)
-							  var rmat =  new THREE.Matrix4()
-							  rmat.set(1 + vmat.elements[0] + sqmat.elements[0] * fc,
-							  	vmat.elements[1] + sqmat.elements[1] * fc,
-							  	vmat.elements[2] + sqmat.elements[2] * fc,
-							  	0,
-							  	vmat.elements[4] + sqmat.elements[4] * fc,
-							  	1 + vmat.elements[5] + sqmat.elements[5] * fc,
-							  	vmat.elements[6] + sqmat.elements[6] * fc,
-							  	0,
-							  	vmat.elements[8] + sqmat.elements[8] * fc,
-							  	vmat.elements[9] + sqmat.elements[9] * fc,
-							  	1 + vmat.elements[10] + sqmat.elements[10] * fc,
-							  	0,
-							  	vmat.elements[12] + sqmat.elements[12] * fc,
-							  	vmat.elements[13] + sqmat.elements[13] * fc,
-							  	vmat.elements[14] + sqmat.elements[14] * fc,
-							  	1)
-
-						      obj.applyMatrix(rmat)
-					// console.log(rmat)
-                              obj.translateX((p1.x + p2.x)/2)
-                              obj.translateY((p1.y + p2.y)/2)
-                              obj.translateZ((p1.z + p2.z)/2)
-
-                          }else{
-                         	obj.position.x += Math.random() * (Math.random() < 0.5 ? -1 : 1)
-                     	    obj.position.y += Math.random() * (Math.random() < 0.5 ? -1 : 1)
-                     	    obj.position.z += Math.random() * (Math.random() < 0.5 ? -1 : 1)
-                     	}
-                     }
+                    obj.geometry.verticesNeedUpdate = true
+			    }
 			})
-			document.getElementById( 'energyVal' ).innerText = network.getEnergy();
+			document.getElementById( 'energyVal' ).innerText = system.getEnergy();
 		}
 
 		function render() {
