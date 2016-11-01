@@ -249,7 +249,8 @@
 							  var v = new THREE.Vector3().crossVectors(curDir, dir)
 							  var c = curDir2.dot(dir)
 							  var fc = 1 / (1 + c)
-							  var vmat = new THREE.Matrix4().set(
+							  var vmat = new THREE.Matrix4()
+							  vmat.set(
 							  	0, -1 * v.z, v.y, 0,
 							  	v.z, 0, -1 * v.x, 0,
 							  	-1 * v.y, v.x, 0, 0,
