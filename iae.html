@@ -200,9 +200,12 @@
 			}
 			container.style.cursor = 'auto';
 		}
-		function animate() {
-			requestAnimationFrame(animate);
-			render();
+
+		function animate(ts) { 
+		    setTimeout(function () { 
+		    requestAnimationFrame(animate); 
+		    render();}
+		    , 1000 / 25); // decrease the frame rate
 		}
 		function setEnergy() {
 			energyVal = SELECTED.position.x;
@@ -291,7 +294,6 @@
 		}
 
 		function render() {
-			
 			updatePosition()
 			
 			controls.update();
