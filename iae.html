@@ -30,7 +30,8 @@
 		offset = new THREE.Vector3(),
 		intersection = new THREE.Vector3(),
 		INTERSECTED, SELECTED, 
-		system = systems["Water"], // which system to show, Water, Hydrogen, Oxygen 
+		systemName = "Water"
+		system = systems[systemName], // which system to show, Water, Hydrogen, Oxygen 
         energyHistory = [];
 		init();
 		animate();
@@ -89,7 +90,7 @@
 			title.style.top = '10px';
 			title.style.textAlign = 'center';
 			title.style.width = '100%';
-			title.innerHTML = 'Interactive Atomistic Environment';
+			title.innerHTML = 'Interactive Atomistic Environment for ' + systemName;
 			
 			var energy = document.createElement( 'div' );
 			energy.style.position = 'absolute';
