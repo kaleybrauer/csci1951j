@@ -134,16 +134,18 @@ Network.prototype.getEnergy = function(){
 /************************************************************************************/
 /***********************************************************************************/
 
-var atomGeo1 = new THREE.SphereGeometry( 80, 300, 300 );
-var atomGeo2 = new THREE.SphereGeometry( 150, 100, 100 );
+var atomGeo1 = new THREE.SphereGeometry( 80, 100, 100 );
+var atomGeo2 = new THREE.SphereGeometry( 80, 100, 100 );
+var atomGeo3 = new THREE.SphereGeometry( 150, 100, 100 );
 
-var materialWhite = new THREE.MeshLambertMaterial( {color: 0xffffff} )
+var materialWhite1 = new THREE.MeshLambertMaterial( {color: 0xffffff} )
+var materialWhite2 = new THREE.MeshLambertMaterial( {color: 0xffffff} )
 var materialGray = new THREE.MeshLambertMaterial( {color: 0x555555} )
 var materialCyan = new THREE.MeshLambertMaterial( {color: 0x008080} )
 
-var atom1 = new THREE.Mesh( atomGeo1, materialWhite );
-var atom2 = new THREE.Mesh( atomGeo1, materialWhite );
-var atom3 = new THREE.Mesh( atomGeo2, materialCyan );
+var atom1 = new THREE.Mesh( atomGeo1, materialWhite1 );
+var atom2 = new THREE.Mesh( atomGeo2, materialWhite2 );
+var atom3 = new THREE.Mesh( atomGeo3, materialCyan );
 
 var node1 = new Node(atom1, 1, {x:-250, y:100, z:0})
 var node2 = new Node(atom2, 2, {x:250, y:-100, z:0})

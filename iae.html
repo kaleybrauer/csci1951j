@@ -85,6 +85,7 @@
 			title.style.textAlign = 'center';
 			title.style.width = '100%';
 			title.innerHTML = 'Interactive Atomistic Environment';
+			
 			var energy = document.createElement( 'div' );
 			energy.style.position = 'absolute';
 			energy.style.bottom = '10px';
@@ -95,6 +96,18 @@
 
 			container.appendChild( title );
 			container.appendChild( energy );
+
+			var text = document.createElement( 'div' );
+			text.style.position = 'absolute';
+			text.style.bottom = '30px';
+			text.style.textAlign = 'left';
+			text.style.width = '100%';
+			// I am currently just defaulting energyVal to be the x position of the last moved atom.
+			text.innerHTML = 'On: <span id="whichone" ></span>';
+
+			container.appendChild( title );
+			container.appendChild( energy );
+			container.appendChild( text );
 
 			setupOptions()
 
@@ -171,11 +184,13 @@
 						INTERSECTED.material.emissive.setHex( 0x754200 );
 				}
 				container.style.cursor = 'pointer';
+				document.getElementById( 'whichone' ).innerText = INTERSECTED.name + " at " + INTERSECTED.position.x + ", " + INTERSECTED.position.y + ", " + INTERSECTED.position.z
 			} else {
 				if ( INTERSECTED )
 				INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
 				INTERSECTED = null;
 				container.style.cursor = 'auto';
+				document.getElementById( 'whichone' ).innerText = ""
 			}
 		}
 		function onDocumentMouseDown( event ) {
