@@ -33,7 +33,7 @@ Edge.prototype.resetVisited = function(){
 /***********************************************************************************/
 /** parameters should have position etc...*/
 
-var Node = function(atom, aid, position, 
+var Node = function(atom, aid, position, name,
 	mass = 1, velocity = new THREE.Vector3(0, 0, 0), force = new THREE.Vector3(0, 0, 0),  edges = []){
 	this.atom = atom
 	this.atom.position.x = position.x
@@ -43,6 +43,7 @@ var Node = function(atom, aid, position,
 	this.position = position
     this.edges = edges;
     this.mass = mass;
+    this.name = name;
 }
 
 // TODO : fill in this
@@ -157,9 +158,9 @@ var atom1 = new THREE.Mesh(atomGeo1, materialWhite1);
 var atom2 = new THREE.Mesh(atomGeo2, materialWhite2);
 var atom3 = new THREE.Mesh(atomGeo3, materialCyan);
 
-var node1 = new Node(atom1, 1, {x:-250, y:100, z:0})
-var node2 = new Node(atom2, 2, {x:250, y:-100, z:0})
-var node3 = new Node(atom3, 3, {x:0, y:0, z:100})
+var node1 = new Node(atom1, 1, {x:-250, y:100, z:0}, "H")
+var node2 = new Node(atom2, 2, {x:250, y:-100, z:0}, "H")
+var node3 = new Node(atom3, 3, {x:0, y:0, z:100}, "O")
 
 node3.addNeighbor(node1)
 node3.addNeighbor(node2)
@@ -179,8 +180,8 @@ var materialCyan2 = new THREE.MeshLambertMaterial( {color: 0x008080} )
 var atom1 = new THREE.Mesh(atomGeo1, materialWhite1);
 var atom2 = new THREE.Mesh(atomGeo2, materialWhite2);
 
-var node1 = new Node(atom1, 1, {x:-50, y:10, z:0})
-var node2 = new Node(atom2, 2, {x:50, y:-10, z:0})
+var node1 = new Node(atom1, 1, {x:-50, y:10, z:0}, "H")
+var node2 = new Node(atom2, 2, {x:50, y:-10, z:0}, "H")
 
 node1.addNeighbor(node2)
 
@@ -197,8 +198,8 @@ var materialWhite2 = new THREE.MeshLambertMaterial( {color: 0xffffff} )
 var atom1 = new THREE.Mesh(atomGeo1, materialWhite1);
 var atom2 = new THREE.Mesh(atomGeo2, materialWhite2);
 
-var node1 = new Node(atom1, 1, {x:-250, y:100, z:0})
-var node2 = new Node(atom2, 2, {x:250, y:-100, z:0})
+var node1 = new Node(atom1, 1, {x:-250, y:100, z:0}, "O")
+var node2 = new Node(atom2, 2, {x:250, y:-100, z:0}, "O")
 
 node1.addNeighbor(node2)
 

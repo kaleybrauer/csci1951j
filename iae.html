@@ -30,7 +30,8 @@
 		offset = new THREE.Vector3(),
 		intersection = new THREE.Vector3(),
 		INTERSECTED, SELECTED, 
-		system = systems["Hydrogen"];
+		system = systems["Water"], // which system to show, Water, Hydrogen, Oxygen 
+        energyHistory = [];
 		init();
 		animate();
 
@@ -51,8 +52,9 @@
 		    var atomList = system.getNodeList();
 
 			atomList.forEach(function(node){
-				node.atom.name = "atom:" + node.aid
-				
+				node.atom.name = "atom:" + node.aid;
+				node.atom.moleculeName = node.name
+				console.log(node)
 				scene.add(node.atom);
 				objects.push(node.atom)
 
@@ -66,16 +68,14 @@
 						var line = new THREE.LineSegments(lineGeo, lineMaterial);
 						
 						line.name = "line:" + edge.atom1.aid + ":" + edge.atom2.aid
-						line.visible = true // line's rotation is not working now
 					    
 					    scene.add(line)
 					    // objects.push(line)
-					    console.log(line)
 					    edge.setVisited()
 					}
 				})
 			})
-			// console.log(scene)
+			console.log(scene)
 			renderer = new THREE.WebGLRenderer( { antialias: true } );
 			renderer.setClearColor( 0xf0f0f0 );
 			renderer.setPixelRatio( window.devicePixelRatio );
@@ -108,7 +108,7 @@
 			text.style.textAlign = 'left';
 			text.style.width = '100%';
 			// I am currently just defaulting energyVal to be the x position of the last moved atom.
-			text.innerHTML = 'On: <span id="whichone" ></span>';
+			text.innerHTML = 'On: <span id="moleculeName" ></span>';
 
 			container.appendChild( title );
 			container.appendChild( energy );
@@ -136,7 +136,8 @@
 			// initializing options
 			optionController = {
 				timestep: 0.05,
-				systemOption: "Hydrogen molecule"
+				systemOption: "Hydrogen molecule",
+				systemOption: "Water molecule"
 				};
 
 			var folder;
@@ -188,13 +189,14 @@
 						INTERSECTED.material.emissive.setHex( 0x754200 );
 				}
 				container.style.cursor = 'pointer';
-				document.getElementById( 'whichone' ).innerText = INTERSECTED.name + " at " + INTERSECTED.position.x + ", " + INTERSECTED.position.y + ", " + INTERSECTED.position.z
+		
+				document.getElementById( 'moleculeName' ).innerText = INTERSECTED.moleculeName
 			} else {
 				if ( INTERSECTED )
 				INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
 				INTERSECTED = null;
 				container.style.cursor = 'auto';
-				document.getElementById( 'whichone' ).innerText = ""
+				document.getElementById( 'moleculeName' ).innerText = ""
 			}
 		}
 		function onDocumentMouseDown( event ) {
@@ -259,6 +261,7 @@
                     obj.geometry.verticesNeedUpdate = true
 			    }
 			})
+			energyHistory.push(system.getEnergy())
 			document.getElementById( 'energyVal' ).innerText = system.getEnergy();
 		}
 
