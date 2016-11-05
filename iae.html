@@ -272,13 +272,13 @@
                     obj.material.transparent = true
 			    }
 			})
-		energyHistory.push(system.getEnergy())
-		if(energyHistory.length() < 500){ // keep only 500 history
-			energyHistory.shift()
-		}
+			energyHistory.push(system.getEnergy())
+			if(energyHistory.length < 500){ // keep only 500 history
+				energyHistory.shift()
+			}
 			document.getElementById( 'energyVal' ).innerText = system.getEnergy();
 		}
-		}
+		
 
 		function render() {
 			updatePosition()
