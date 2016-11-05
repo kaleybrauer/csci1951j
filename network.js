@@ -226,19 +226,21 @@ dampingFactor  = 0.8
 timeStep = 0.1
 opacityThreshold = 0.1
 opacityThresholdScale = opacityThreshold * unitScale
+
 /******************************    Hydrogen	   *********************************/
 var HHDistance = 0.000100;
 var HMass = 0.005;
 var HRadius = 0.01;
 var HColor = 0x008080;
 
+/******************************    Water	   *********************************/
 var HODistance = 0.0500;
 var ORadius = 0.02;
 var OColor = 0xffffff;
 
+/******************************    Hydrogen	   *********************************/
 var OODistance = 0.000100;
 var OMass = 0.005;
-
 
 /******************************    Water  *********************************/
 var atomGeo1 = new THREE.SphereGeometry( unitScale * HRadius, 100, 100 );
@@ -318,11 +320,22 @@ var materialWhite2 = new THREE.MeshLambertMaterial( {color: 0xffffff} )
 var atom1 = new THREE.Mesh(atomGeo1, materialWhite1);
 var atom2 = new THREE.Mesh(atomGeo2, materialWhite2);
 
-var node1 = new Node(atom1, 1, "O")
-var node2 = new Node(atom2, 2, "O")
+var node1 = new Node(atom1, 1, "O",
+					{mass: OMass * unitScale, 
+					 position:new THREE.Vector3(-150, 10, 0),
+					 velocity:new THREE.Vector3(0, 0, 0), 
+		             acceleration: new THREE.Vector3(0, 0, 0), 
+		             force:new THREE.Vector3(0, 0, 0)})
 
-node1.addNeighbor(node2)
-node2.addNeighbor(node1)
+var node2 = new Node(atom2, 2, "O",
+					{mass: OMass * unitScale, 
+					 position:new THREE.Vector3(150, 10, 0),
+					 velocity:new THREE.Vector3(0, 0, 0), 
+		             acceleration: new THREE.Vector3(0, 0, 0), 
+		             force:new THREE.Vector3(0, 0, 0)})
+
+
+node1.addNeighbor(node2, OODistance * unitScale)
 
 var oxygen = new Network(node1);
 oxygen.addNode(node2)
