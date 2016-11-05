@@ -30,13 +30,11 @@
 		offset = new THREE.Vector3(),
 		intersection = new THREE.Vector3(),
 		INTERSECTED, SELECTED, 
-		systemName = "Water"
+		systemName = "Water",//"Hydrogen"
 		system = systems[systemName], // which system to show, Water, Hydrogen, Oxygen 
         energyHistory = [];
 		init();
 		animate();
-
-
 
 		function init() {
 			container = document.createElement( 'div' );
@@ -76,7 +74,7 @@
 					}
 				})
 			})
-			console.log(scene)
+
 			renderer = new THREE.WebGLRenderer( { antialias: true } );
 			renderer.setClearColor( 0xf0f0f0 );
 			renderer.setPixelRatio( window.devicePixelRatio );
@@ -137,8 +135,7 @@
 			// initializing options
 			optionController = {
 				timestep: 0.05,
-				systemOption: "Hydrogen molecule",
-				systemOption: "Water molecule"
+				systemOption: ["Hydrogen molecule", "Water molecule"] ///???????
 				};
 
 			var folder;
@@ -190,8 +187,14 @@
 						INTERSECTED.material.emissive.setHex( 0x754200 );
 				}
 				container.style.cursor = 'pointer';
-		
+	
 				document.getElementById( 'moleculeName' ).innerText = INTERSECTED.moleculeName
+
+				var ids = INTERSECTED.name.split(":")
+					var id = ids[1]
+					var node = system.getNode(id)
+                    node.setPosition(INTERSECTED.position)
+
 			} else {
 				if ( INTERSECTED )
 				INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
@@ -239,14 +242,16 @@
 		}
 
 		function updatePosition(){
-
             var objects = scene.children
 
 			objects.forEach(function(obj){
 				if(obj.type == "Mesh"){
-                    obj.position.x += Math.random() * (Math.random() < 0.5 ? -1 : 1)
-                    obj.position.y += Math.random() * (Math.random() < 0.5 ? -1 : 1)
-                    obj.position.z += Math.random() * (Math.random() < 0.5 ? -1 : 1)
+					var ids = obj.name.split(":")
+					var id = ids[1]
+					var node = system.getNode(id)
+                    obj.position.x = node.position.x
+                    obj.position.y = node.position.y
+                    obj.position.z = node.position.z
 				}
 
 				if(obj.type == "LineSegments"){
@@ -255,11 +260,16 @@
                     var atom1 = scene.getObjectByName("atom:" + aid1)
                     var atom2 = scene.getObjectByName("atom:" + aid2);
                     var p1 = atom1.position, p2 = atom2.position
+                    var dist = p1.distanceTo(p2)
 
                     obj.geometry.vertices[0]= p1.clone()
                     obj.geometry.vertices[1]= p2.clone()
 
                     obj.geometry.verticesNeedUpdate = true
+
+                    obj.material.opacity = dist > opacityThresholdScale ? 0 : (1 - dist / opacityThresholdScale)
+                    obj.material.needsUpdate = true
+                    obj.material.transparent = true
 			    }
 			})
 			energyHistory.push(system.getEnergy())
@@ -270,6 +280,8 @@
 			updatePosition()
 			
 			controls.update();
+			system.recomputeForceAcc()
+			system.updateNodes()
 			renderer.render( scene, camera );
 
 		}
