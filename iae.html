@@ -30,7 +30,7 @@
 		offset = new THREE.Vector3(),
 		intersection = new THREE.Vector3(),
 		INTERSECTED, SELECTED, 
-		systemName = "Hydrogen",//"Hydrogen"
+		systemName = "Water",//"Hydrogen"
 		system = systems[systemName], // which system to show, Water, Hydrogen, Oxygen 
         energyHistory = [];
 		init();
@@ -60,7 +60,7 @@
 				node.edges.forEach(function(edge){
 					if(edge.getVisited() == false){
 						var lineGeo = new THREE.Geometry()
-						var lineMaterial = new THREE.LineBasicMaterial({ color: 0xAAAAAA, linewidth: 20 })
+						var lineMaterial = new THREE.LineBasicMaterial({ color: 0xAAAAAA, linewidth: 50 })
 						
 						lineGeo.vertices.push(edge.atom1.position)
 						lineGeo.vertices.push(edge.atom2.position)
@@ -267,7 +267,7 @@
 
                     obj.geometry.verticesNeedUpdate = true
 
-                    obj.material.opacity = dist > opacityThresholdScale ? 0 : (1 - dist / opacityThresholdScale)
+                    obj.material.opacity = dist > settings.opacityThresholdScale ? 0 : (1 - dist / settings.opacityThresholdScale)
                     obj.material.needsUpdate = true
                     obj.material.transparent = true
 			    }
@@ -282,7 +282,6 @@
 
 		function render() {
 			updatePosition()
-			
 			controls.update();
 			system.recomputeForceAcc()
 			system.updateNodes()
