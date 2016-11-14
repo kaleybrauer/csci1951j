@@ -15,6 +15,7 @@
 	<script src="js/libs/three.js"></script>
 	<script src="js/controls/TrackballControls.js"></script>
 	<script src='js/libs/dat.gui.min.js'></script>
+	<script src='js/libs/stats.min.js'></script>
     <script src="network.js"></script>
 	<script>
 		var container;
@@ -29,52 +30,34 @@
 		var mouse = new THREE.Vector2(),
 		offset = new THREE.Vector3(),
 		intersection = new THREE.Vector3(),
-		INTERSECTED, SELECTED, 
-		systemName = "H2",
+		INTERSECTED, SELECTED;
+		
+		var systemName = "H2",
 		system = systems[systemName], // which system to show 
-		displayType = "position",
-        energyHistory = [];
+		displayType = "position";
+
+	   var canvas = document.createElement( 'canvas' );
+		   canvas.width = settings.maxHistory;
+		   canvas.height = settings.maxHistory / 40;
+		   canvas.style.position = 'absolute';
+		   canvas.style.bottom =  "15px";
+		   canvas.style.left = '150px';
+		   canvas.style.width = '100%';
+	    var context = canvas.getContext( '2d' );
+		context.fillStyle = 'rgba(127, 127, 127, 0.3)';
+ 
+		
 		init();
 		animate();
 
+        // init the scene
 		function init() {
 			container = document.createElement( 'div' );
 			document.body.appendChild( container );
 			camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
 			camera.position.z = 1000;
-			scene = new THREE.Scene();
-			scene.add( new THREE.AmbientLight( 0x505050 ) );
-			var light = new THREE.SpotLight( 0xffffff, 1.5 );
-			light.position.set( 0, 500, 2000 );
-			scene.add( light );
-
-
-		    var atomList = system.getNodeList();
-
-			atomList.forEach(function(node){
-				node.atom.name = "atom:" + node.aid;
-				node.atom.moleculeName = node.name
-				console.log(node)
-				scene.add(node.atom);
-				objects.push(node.atom)
-
-				node.edges.forEach(function(edge){
-					if(edge.getVisited() == false){
-						var lineGeo = new THREE.Geometry()
-						var lineMaterial = new THREE.LineBasicMaterial({ color: 0xAAAAAA, linewidth: 50 })
-						
-						lineGeo.vertices.push(edge.atom1.position)
-						lineGeo.vertices.push(edge.atom2.position)
-						var line = new THREE.LineSegments(lineGeo, lineMaterial);
-						
-						line.name = "line:" + edge.atom1.aid + ":" + edge.atom2.aid
-					    
-					    scene.add(line)
-					    // objects.push(line)
-					    edge.setVisited()
-					}
-				})
-			})
+			
+			setupSystem();
 
 			renderer = new THREE.WebGLRenderer( { antialias: true } );
 			renderer.setClearColor( 0xf0f0f0 );
@@ -110,6 +93,7 @@
 			container.appendChild( title );
 			container.appendChild( energy );
 			container.appendChild( text );
+			container.appendChild( canvas );
 
 			setupOptions()
 
@@ -127,7 +111,49 @@
 			controls.dynamicDampingFactor = 0.3;
 			
 			window.addEventListener( 'resize', onWindowResize, false );
+
+			// stats.showPanel(3); // 0: fps, 1: ms, 2: mb, 3+: custom
+		    // document.body.appendChild(stats.dom);
+		    // document.body.appendChild( canvas );
 		}
+
+
+        // set up which one to show
+        function setupSystem(){
+            objects = []
+            scene = new THREE.Scene();
+			scene.add( new THREE.AmbientLight( 0x505050 ) );
+			var light = new THREE.SpotLight( 0xffffff, 1.5 );
+			light.position.set( 0, 500, 2000 );
+			scene.add( light );
+
+		    var atomList = system.getNodeList();
+
+			atomList.forEach(function(node){
+				node.atom.name = "atom:" + node.aid;
+				node.atom.moleculeName = node.name
+				// console.log(node)
+				scene.add(node.atom);
+				objects.push(node.atom)
+
+				node.edges.forEach(function(edge){
+					// set up the bond
+					if(edge.getVisited() == false){
+						var lineGeo = new THREE.Geometry()
+						var lineMaterial = new THREE.LineBasicMaterial({ color: parameters.color.bond, linewidth: parameters.bondwidth })
+						
+						lineGeo.vertices.push(edge.atom1.position)
+						lineGeo.vertices.push(edge.atom2.position)
+						var line = new THREE.LineSegments(lineGeo, lineMaterial);
+						
+						line.name = "line:" + edge.atom1.aid + ":" + edge.atom2.aid
+					    
+					    scene.add(line)
+					    edge.setVisited()
+					}
+				})
+			})
+        }
 
 		function setupOptions() {
 			// initializing options
@@ -147,14 +173,15 @@
 			
 			// setup system
 			folder = gui.addFolder( "Setup System" );
-			folder.add( optionController, "systemOption", [ "H2", "O2", "H2O", "Option4", "Option5", "Option6" ] ).name( "System" ).onChange( render );
+			folder.add( optionController, "systemOption", [ "H2", "O2", "H2O"] ).name( "System" ).onChange( render );
 
 			var buttonReset = {
-			    resetSys: function() {
-				resetSys();
+			    resetSystem: function() {
+				   system.reset()
+				   settings.energyHistory = []
 			    }
 			};
-			folder.add( buttonReset, 'resetSys' ).name( "Reset System" );
+			folder.add( buttonReset, 'resetSystem' ).name( "Reset System" ).onChange( render );
 
 			gui.close();
 		}
@@ -225,11 +252,36 @@
 			container.style.cursor = 'auto';
 		}
 
-		function animate(ts) { 
+		function animate() { 
 		    setTimeout(function () { 
 		    requestAnimationFrame(animate); 
 		    render();}
 		    , 1000 / 25); // decrease the frame rate
+
+				var time = performance.now() / 1000;
+				context.clearRect( 0, 0, canvas.width, canvas.height);
+
+				var maxEnergy = Math.max.apply(null, settings.energyHistory) // 4
+
+				if(settings.energyHistory > 0)
+					context.moveTo(0, canvas.height - canvas.height * settings.energyHistory[i] / maxEnergy);
+				else
+                	context.moveTo(0, canvas.height);
+              
+             	var x = 0, y = 0;
+             	context.beginPath();
+				for ( var i = 0; i < settings.energyHistory.length; i ++ ) {
+					x = i;
+					if(maxEnergy == 0){
+						y = canvas.height
+					}else{
+					    y =  canvas.height - canvas.height * settings.energyHistory[i] / maxEnergy
+					}
+
+					context.lineTo(x, y);
+				}
+				context.stroke();
+
 		}
 
 		function resetSys() {
@@ -272,20 +324,27 @@
 
                     obj.geometry.verticesNeedUpdate = true
 
-                    obj.material.opacity = dist > settings.opacityThresholdScale ? 0 : (1 - dist / settings.opacityThresholdScale)
+                    obj.material.opacity = dist > parameters[systemName].opacityThresholdScale ? 0 : (1 - dist / parameters[systemName].opacityThresholdScale)
                     obj.material.needsUpdate = true
                     obj.material.transparent = true
 			    }
 			})
-			energyHistory.push(system.getEnergy())
-			if(energyHistory.length < 500){ // keep only 500 history
-				energyHistory.shift()
-			}
-			document.getElementById( 'energyVal' ).innerText = parseFloat(system.getEnergy()).toFixed(4);
-		}
-		
+		   }
 
 		function render() {
+		  settings.timeStep = optionController.timestep
+
+		   settings.energyHistory.push(system.getEnergy())
+			if(settings.energyHistory.length > settings.maxHistory){ // keep only 500 history
+				settings.energyHistory.shift()
+			}
+			document.getElementById( 'energyVal' ).innerText = parseFloat(system.getEnergy()).toFixed(4);
+		
+			if(systemName != optionController.systemOption){
+				systemName = optionController.systemOption
+			    system = systems[systemName]
+			    setupSystem();
+		    }
 			updatePosition()
 			controls.update();
 			// only update forces if an atom is not currently clicked on
@@ -296,6 +355,8 @@
 			renderer.render( scene, camera );
 
 		}
+
+
 	</script>
 </body>
 </html>
