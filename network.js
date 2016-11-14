@@ -3,10 +3,10 @@
 /***********************************************************************************/
 /***********************************************************************************/
 
-var Edge = function(atom1, atom2, strength = 1){
+var Edge = function(atom1, atom2, equilibrium){
 	this.atom1 = atom1
 	this.atom2 = atom2
-	this.strength = strength
+	this.equilibrium = equilibrium
 	this.visited = false
 }
 
@@ -38,14 +38,12 @@ var Node = function(atom, aid, name,
 		              acceleration: new THREE.Vector3(0, 0, 0), 
 		              force:new THREE.Vector3(0, 0, 0)},  
     edges = []){
-	this.atom = atom
-	this.atom.position.x = props.position.x
-	this.atom.position.y = props.position.y
-	this.atom.position.z = props.position.z
-	this.aid = aid
-	this.position = props.position
-	this.velocity = props.velocity
-	this.acceleration = props.acceleration
+	this.atom = atom;
+	this.aid = aid;
+	this.position = props.position;
+	this.oldposition = props.position;
+	this.velocity = props.velocity;
+	this.acceleration = props.acceleration;
     this.edges = edges;
     this.mass = props.mass;
     this.name = name;
@@ -56,38 +54,45 @@ Node.prototype.updateForce = function(force){
     this.force = force
 }
 
-Node.prototype.computeForce = function(network = null){
+Node.prototype.getForce = function(network = null){
     var newForce = new THREE.Vector3(0, 0, 0)
-    var thisCopy = new THREE.Vector3(this.position.x, this.position.y, this.position.z)
+    var posCopy = new THREE.Vector3(this.position.x, this.position.y, this.position.z)
 
 	this.edges.forEach(function(e, i){	
-		var dist = thisCopy.distanceTo(e.atom2.position)
+		var dist = posCopy.distanceTo(e.atom2.position)
 		dist = dist < 1 ? 1 : dist
-		var forceTmp = thisCopy.sub(e.atom2.position)
+		var forceTmp = posCopy.sub(e.atom2.position)
 		forceTmp.normalize()
-		forceTmp.multiplyScalar(settings.hookeConstant * (e.strength - dist))
+		forceTmp.multiplyScalar(settings.hookeConstant * (e.equilibrium - dist))
 		newForce.add(forceTmp)
 	})
 	this.force = newForce
 }
 
-Node.prototype.updateVelocity = function(t){ // using its current velocity
-	var c = new THREE.Vector3(this.acceleration.x, this.acceleration.y, this.acceleration.z);
-    this.velocity.add(c.multiplyScalar(t))
+Node.prototype.updateVelocity = function(t){ // v_i = (x_i - x_{i-1})/timestep
+	var posCopy = new THREE.Vector3(this.position.x, this.position.y, this.position.z);
+	var oldposCopy = new THREE.Vector3(this.oldposition.x, this.oldposition.y, this.oldposition.z);
+	var c = posCopy.sub(oldposCopy);
+	this.velocity = c.divideScalar(t);
+
+// 	var c = new THREE.Vector3(this.acceleration.x, this.acceleration.y, this.acceleration.z);
+//  this.velocity.add(c.multiplyScalar(t))
 }
 
 
-Node.prototype.updateAcceleration = function(){ // using its current force
-	var forceCopy = new THREE.Vector3(this.force.x, this.force.y, this.force.z)
-    this.acceleration = forceCopy.divideScalar(this.mass)
-    		 	
+Node.prototype.updateAcceleration = function(){ // acceleration from current force
+	var forceCopy = new THREE.Vector3(this.force.x, this.force.y, this.force.z);
+    this.acceleration = forceCopy.divideScalar(this.mass);
 }
 
 Node.prototype.updatePosition = function(t){
-	 var c1 = new THREE.Vector3(this.velocity.x, this.velocity.y, this.velocity.z), 
-	 c2 = new THREE.Vector3(this.acceleration.x, this.acceleration.y, this.acceleration.z);
-	 this.position.add(c1.multiplyScalar(t));
-     this.position.add(c2.multiplyScalar(0.5 * t * t));
+	// storing the old position
+	this.oldposition = new THREE.Vector3(this.position.x, this.position.y, this.position.z);
+	// updating position
+	var v = new THREE.Vector3(this.velocity.x, this.velocity.y, this.velocity.z), 
+	a = new THREE.Vector3(this.acceleration.x, this.acceleration.y, this.acceleration.z);
+	this.position.add(v.multiplyScalar(t));
+    this.position.add(a.multiplyScalar(0.5 * t * t));
 }
 
 Node.prototype.setVelocity = function(velocity){
@@ -123,10 +128,10 @@ Node.prototype.resetVisited = function(){
     this.visited = false
 }
 
-Node.prototype.addNeighbor = function(node, strength){
+Node.prototype.addNeighbor = function(node, equilibrium){
 	if(this.hasThisNeighbor(node) == false){
-        this.edges.push(new Edge(this, node, strength))
-        node.edges.push(new Edge(node, this, strength))
+        this.edges.push(new Edge(this, node, equilibrium))
+        node.edges.push(new Edge(node, this, equilibrium))
     }
 }
 
@@ -188,37 +193,40 @@ Network.prototype.resetVisited = function(){
 Network.prototype.getEnergy = function(){
     var energy = 0;
 	this.nodeList.forEach(function(node){
-        var thisCopy = new THREE.Vector3(node.position.x, node.position.y, node.position.z)
+        var thisCopy = new THREE.Vector3(node.position.x, node.position.y, node.position.z);
         node.edges.forEach(function(e, i){ 
-            var dist = thisCopy.distanceTo(e.atom2.position)
-            energy += 0.5 * settings.hookeConstant * (e.strength - dist) * (e.strength - dist) / (settings.unitScale*settings.unitScale);
+            var dist = thisCopy.distanceTo(e.atom2.position);
+            var x = e.equilibrium - dist;
+            energy += 0.5 * settings.hookeConstant * x * x;
         })
     })
+    energy = energy / (settings.unitScale * settings.unitScale);
     return energy
 }
 
-Network.prototype.recomputeForceAcc = function(){
+Network.prototype.getForceAcc = function(){
 	this.nodeList.forEach(function(n, i){
-		n.computeForce()
+		n.getForce()
 		n.updateAcceleration()
 	})
 }
+
 Network.prototype.updateNodes = function(){
 	this.nodeList.forEach(function(n, i){
-			n.updatePosition(settings.timeStep)
 			n.updateVelocity(settings.timeStep)
+			n.updatePosition(settings.timeStep)
 	})
 }
 
-/**********************************************************************************/
+/***********************************************************************************/
 /******************************    Build Network   *********************************/
-/************************************************************************************/
+/***********************************************************************************/
 /***********************************************************************************/
 
 /******************************    Constants   *********************************/
 // unit scale: 2000 units -> ~7 angstroms
 settings = {unitScale : 285,
-hookeConstant : 0.03, // in amu/s^2 ---- not actually correct, need to figure out why so unstable
+hookeConstant : 0.03, // in amu/s^2 ---- not actually correct
 timeStep : 0.2,
 opacityThreshold : 0.1,
 opacityThresholdScale : 0.1 * 10000,

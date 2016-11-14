@@ -31,7 +31,8 @@
 		intersection = new THREE.Vector3(),
 		INTERSECTED, SELECTED, 
 		systemName = "H2",
-		system = systems[systemName], // which system to show, Water, Hydrogen, Oxygen 
+		system = systems[systemName], // which system to show 
+		displayType = "position",
         energyHistory = [];
 		init();
 		animate();
@@ -132,7 +133,8 @@
 			// initializing options
 			optionController = {
 				timestep: 0.05,
-				systemOption: "H2"
+				systemOption: "H2", // which system we are showing
+				displayOption: "position" // which display we are showing (in this case, position space)
 				};
 
 			var folder;
@@ -141,6 +143,7 @@
 			// simulation controls
 			folder = gui.addFolder( "Simulation Controls" );
 			folder.add( optionController, "timestep", 0.01, 2.0, 0.01 ).name( "Timestep (s)" ).onChange( render );
+			folder.add( optionController, "displayOption", [ "position", "momentum", "energy" ] ).name( "Display" ).onChange( render );			
 			
 			// setup system
 			folder = gui.addFolder( "Setup System" );
@@ -241,9 +244,19 @@
 					var ids = obj.name.split(":")
 					var id = ids[1]
 					var node = system.getNode(id)
-                    obj.position.x = node.position.x
-                    obj.position.y = node.position.y
-                    obj.position.z = node.position.z
+
+					if (displayType == "position") {
+                 	    obj.position.x = node.position.x
+                    	obj.position.y = node.position.y
+                		obj.position.z = node.position.z
+              		}
+
+//              	if (displayType == "momentum") {
+//               	    obj.position.x = (node.velocity.x * mass)
+//  	              	obj.position.y = (node.velocity.y * mass)
+//                		obj.position.z = (node.velocity.z * mass)
+//              	}
+
 				}
 
 				if(obj.type == "LineSegments"){
@@ -275,8 +288,11 @@
 		function render() {
 			updatePosition()
 			controls.update();
-			system.recomputeForceAcc()
-			system.updateNodes()
+			// only update forces if an atom is not currently clicked on
+//			if !SELECTED {
+				system.getForceAcc()
+				system.updateNodes()
+//			}
 			renderer.render( scene, camera );
 
 		}
