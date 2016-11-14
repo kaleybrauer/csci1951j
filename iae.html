@@ -30,7 +30,7 @@
 		offset = new THREE.Vector3(),
 		intersection = new THREE.Vector3(),
 		INTERSECTED, SELECTED, 
-		systemName = "Water",//"Hydrogen"
+		systemName = "H2",
 		system = systems[systemName], // which system to show, Water, Hydrogen, Oxygen 
         energyHistory = [];
 		init();
@@ -90,23 +90,20 @@
 			title.style.width = '100%';
 			title.innerHTML = 'Interactive Atomistic Environment for ' + systemName;
 			
+			// placing energy marker
 			var energy = document.createElement( 'div' );
 			energy.style.position = 'absolute';
 			energy.style.bottom = '10px';
 			energy.style.textAlign = 'left';
 			energy.style.width = '100%';
-			// I am currently just defaulting energyVal to be the x position of the last moved atom.
-			energy.innerHTML = 'Energy: <span id="energyVal" ></span>';
+			energy.innerHTML = 'Energy (J): <span id="energyVal" ></span>';
 
-			container.appendChild( title );
-			container.appendChild( energy );
-
+			// placing 'on' marker
 			var text = document.createElement( 'div' );
 			text.style.position = 'absolute';
 			text.style.bottom = '30px';
 			text.style.textAlign = 'left';
 			text.style.width = '100%';
-			// I am currently just defaulting energyVal to be the x position of the last moved atom.
 			text.innerHTML = 'On: <span id="moleculeName" ></span>';
 
 			container.appendChild( title );
@@ -135,7 +132,7 @@
 			// initializing options
 			optionController = {
 				timestep: 0.05,
-				systemOption: ["Hydrogen molecule", "Water molecule"] ///???????
+				systemOption: "H2"
 				};
 
 			var folder;
@@ -147,7 +144,7 @@
 			
 			// setup system
 			folder = gui.addFolder( "Setup System" );
-			folder.add( optionController, "systemOption", [ "Hydrogen molecule", "Option2", "Option3", "Option4", "Option5", "Option6" ] ).name( "System" ).onChange( render );
+			folder.add( optionController, "systemOption", [ "H2", "O2", "H2O", "Option4", "Option5", "Option6" ] ).name( "System" ).onChange( render );
 
 			var buttonReset = {
 			    resetSys: function() {
@@ -232,10 +229,6 @@
 		    render();}
 		    , 1000 / 25); // decrease the frame rate
 		}
-		function setEnergy() {
-			energyVal = SELECTED.position.x;
-			document.getElementById( 'energyVal' ).innerText = energyVal;
-		}
 
 		function resetSys() {
 			// does nothing yet
@@ -276,7 +269,7 @@
 			if(energyHistory.length < 500){ // keep only 500 history
 				energyHistory.shift()
 			}
-			document.getElementById( 'energyVal' ).innerText = system.getEnergy();
+			document.getElementById( 'energyVal' ).innerText = parseFloat(system.getEnergy()).toFixed(4);
 		}
 		
 
