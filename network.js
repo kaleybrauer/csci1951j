@@ -1,5 +1,3 @@
-
-
 /***********************************************************************************/
 /********************************    Edges     *************************************/
 /***********************************************************************************/
@@ -73,14 +71,13 @@ Node.prototype.computeForce = function(network = null){
 	this.force = newForce
 }
 
-Node.prototype.updateVelocity = function(t){ // using its velocity
+Node.prototype.updateVelocity = function(t){ // using its current velocity
 	var c = new THREE.Vector3(this.acceleration.x, this.acceleration.y, this.acceleration.z);
     this.velocity.add(c.multiplyScalar(t))
-    // * damping
 }
 
 
-Node.prototype.updateAccerelation = function(){ // using its acc
+Node.prototype.updateAcceleration = function(){ // using its current force
 	var forceCopy = new THREE.Vector3(this.force.x, this.force.y, this.force.z)
     this.acceleration = forceCopy.divideScalar(this.mass)
     		 	
@@ -124,13 +121,6 @@ Node.prototype.setVisited = function(node){
 
 Node.prototype.resetVisited = function(){
     this.visited = false
-}
-
-Node.prototype.addNeighbor = function(node){
-	if(this.hasThisNeighbor(node) == false){
-        this.edges.push(new Edge(this, node))
-        node.edges.push(new Edge(node, this))
-    }
 }
 
 Node.prototype.addNeighbor = function(node, strength){
@@ -207,11 +197,10 @@ Network.prototype.getEnergy = function(){
     return energy
 }
 
-
 Network.prototype.recomputeForceAcc = function(){
 	this.nodeList.forEach(function(n, i){
 		n.computeForce()
-		n.updateAccerelation()
+		n.updateAcceleration()
 	})
 }
 Network.prototype.updateNodes = function(){
