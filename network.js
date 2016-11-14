@@ -386,7 +386,7 @@ function buildH2() {
     return H2
 }
 /******************************    Oxygen   *********************************/
-// function buildO2() {
+function buildO2() {
     var atomGeo1 = new THREE.SphereGeometry((parameters.radius.O * settings.unitScale) / 2.0, 100, 100);
     var atomGeo2 = new THREE.SphereGeometry((parameters.radius.O * settings.unitScale) / 2.0, 100, 100);
 
@@ -421,11 +421,11 @@ function buildH2() {
     O2 = new Network(node1)
     O2.addNode(node2)
 
-//     return O2
-// }
+    return O2
+}
 
 systems = {
     "H2O": buildH2O(),
     "H2": buildH2(),
-    "O2": O2
+    "O2": buildO2()
 }
