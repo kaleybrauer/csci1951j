@@ -195,14 +195,13 @@ Network.prototype.resetVisited = function(){
 	})
 }
 
-// TODO : fill in this
 Network.prototype.getEnergy = function(){
     var energy = 0;
 	this.nodeList.forEach(function(node){
         var thisCopy = new THREE.Vector3(node.position.x, node.position.y, node.position.z)
         node.edges.forEach(function(e, i){ 
             var dist = thisCopy.distanceTo(e.atom2.position)
-            energy += 0.5 * settings.hookeConstant * dist * dist / (settings.unitScale * settings.unitScale);
+            energy += 0.5 * settings.hookeConstant * (e.strength - dist) * (e.strength - dist) / (settings.unitScale*settings.unitScale);
         })
     })
     return energy
@@ -228,30 +227,30 @@ Network.prototype.updateNodes = function(){
 /***********************************************************************************/
 
 /******************************    Constants   *********************************/
-settings = {unitScale : 10000,
-hookeConstant : 0.4,
-dampingFactor  : 0.8,
+// unit scale: 2000 units -> ~7 angstroms
+settings = {unitScale : 285,
+hookeConstant : 0.03, // in amu/s^2 ---- not actually correct, need to figure out why so unstable
 timeStep : 0.2,
 opacityThreshold : 0.1,
 opacityThresholdScale : 0.1 * 10000,
 }
 
 /******************************    Hydrogen	   *********************************/
-var HHDistance = 0.000100;
-var HMass = 0.005;
-var HRadius = 0.01;
+var HHDistance = 0.74; // equilibrium bond distance in angstroms
+var HMass = 1; // mass in amu
+var HRadius = 0.25; // empirical radius in angstroms
 var HColor = 0x008080;
 
 /******************************    Water	   *********************************/
-var HODistance = 0.000500;
-var ORadius = 0.02;
+var HODistance = 0.96;
+var ORadius = 0.60;
 var OColor = 0xffffff;
 
-/******************************    Hydrogen	   *********************************/
-var OODistance = 0.000100;
-var OMass = 0.005;
+/******************************    Oxygen	   *********************************/
+var OODistance = 1.48;
+var OMass = 16;
 
-/******************************    Water  *********************************/
+/******************************     Water     *********************************/
 var atomGeo1 = new THREE.SphereGeometry( settings.unitScale * HRadius, 100, 100 );
 var atomGeo2 = new THREE.SphereGeometry( settings.unitScale * HRadius, 100, 100 );
 var atomGeo3 = new THREE.SphereGeometry( settings.unitScale * ORadius, 100, 100 );
@@ -266,19 +265,19 @@ var atom2 = new THREE.Mesh(atomGeo2, materialWhite2);
 var atom3 = new THREE.Mesh(atomGeo3, materialCyan);
 
 var node1 = new Node(atom1, 1, "H",
-					{mass: HMass * settings.unitScale, 
+					{mass: HMass, 
 					 position:new THREE.Vector3(150, 10, 0),
 					 velocity:new THREE.Vector3(0, 0, 0), 
 		             acceleration: new THREE.Vector3(0, 0, 0), 
 		             force:new THREE.Vector3(0, 0, 0)})
 var node2 = new Node(atom2, 2, "H", 
-					{mass: HMass * settings.unitScale, 
+					{mass: HMass, 
 					 position:new THREE.Vector3(-150, 10, 0),
 					 velocity:new THREE.Vector3(0, 0, 0), 
 		             acceleration: new THREE.Vector3(0, 0, 0), 
 		             force:new THREE.Vector3(0, 0, 0)})
 var node3 = new Node(atom3, 3, "O",
-					{mass: OMass * settings.unitScale, 
+					{mass: OMass, 
 					 position:new THREE.Vector3(0, 100, 0),
 					 velocity:new THREE.Vector3(0, 0, 0), 
 		             acceleration: new THREE.Vector3(0, 0, 0), 
@@ -287,9 +286,9 @@ var node3 = new Node(atom3, 3, "O",
 node3.addNeighbor(node1, HODistance * settings.unitScale)
 node3.addNeighbor(node2, HODistance * settings.unitScale)
 
-var water = new Network(node3);
-water.addNode(node1)
-water.addNode(node2)
+var H2O = new Network(node3);
+H2O.addNode(node1)
+H2O.addNode(node2)
 
 /******************************    Hydrogen   *********************************/
 var atomGeo1 = new THREE.SphereGeometry( settings.unitScale * HRadius, 100, 100 );
@@ -302,22 +301,22 @@ var atom1 = new THREE.Mesh(atomGeo1, material1);
 var atom2 = new THREE.Mesh(atomGeo2, material2);
 
 var node1 = new Node(atom1, 1, "H", 
-					{mass: HMass * settings.unitScale, 
-					 position:new THREE.Vector3(-150, 10, 0),
+					{mass: HMass, 
+					 position:new THREE.Vector3(- (HHDistance * settings.unitScale)/2, 0, 0),
 					 velocity:new THREE.Vector3(0, 0, 0), 
 		             acceleration: new THREE.Vector3(0, 0, 0), 
 		             force:new THREE.Vector3(0, 0, 0)})
 var node2 = new Node(atom2, 2, "H",
-					{mass: HMass * settings.unitScale, 
-					 position:new THREE.Vector3(150, 10, 0),
+					{mass: HMass, 
+					 position:new THREE.Vector3((HHDistance * settings.unitScale)/2, 0, 0),
 					 velocity:new THREE.Vector3(0, 0, 0), 
 		             acceleration: new THREE.Vector3(0, 0, 0), 
 		             force:new THREE.Vector3(0, 0, 0)})
 
 node1.addNeighbor(node2, HHDistance * settings.unitScale)
 
-var hydrogen = new Network(node1);
-hydrogen.addNode(node2)
+var H2 = new Network(node1);
+H2.addNode(node2)
 
 /******************************    Oxygen   *********************************/
 var atomGeo1 = new THREE.SphereGeometry( 150, 100, 100 );
@@ -330,15 +329,15 @@ var atom1 = new THREE.Mesh(atomGeo1, materialWhite1);
 var atom2 = new THREE.Mesh(atomGeo2, materialWhite2);
 
 var node1 = new Node(atom1, 1, "O",
-					{mass: OMass * settings.unitScale, 
-					 position:new THREE.Vector3(-150, 10, 0),
+					{mass: OMass, 
+					 position:new THREE.Vector3(-(OODistance * settings.unitScale)/2, 0, 0),
 					 velocity:new THREE.Vector3(0, 0, 0), 
 		             acceleration: new THREE.Vector3(0, 0, 0), 
 		             force:new THREE.Vector3(0, 0, 0)})
 
 var node2 = new Node(atom2, 2, "O",
-					{mass: OMass * settings.unitScale, 
-					 position:new THREE.Vector3(150, 10, 0),
+					{mass: OMass, 
+					 position:new THREE.Vector3((OODistance * settings.unitScale)/2, 0, 0),
 					 velocity:new THREE.Vector3(0, 0, 0), 
 		             acceleration: new THREE.Vector3(0, 0, 0), 
 		             force:new THREE.Vector3(0, 0, 0)})
@@ -346,8 +345,8 @@ var node2 = new Node(atom2, 2, "O",
 
 node1.addNeighbor(node2, OODistance * settings.unitScale)
 
-var oxygen = new Network(node1);
-oxygen.addNode(node2)
+var O2 = new Network(node1);
+O2.addNode(node2)
 
 /******************************    Systems   *********************************/
-var systems = {"Water": water, "Hydrogen": hydrogen, "Oxygen": oxygen}
+var systems = {"H2O": H2O, "H2": H2, "O2": O2}
