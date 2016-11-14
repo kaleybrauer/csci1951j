@@ -36,16 +36,9 @@
 		system = systems[systemName], // which system to show 
 		displayType = "position";
 
-	   var canvas = document.createElement( 'canvas' );
-		   canvas.width = settings.maxHistory;
-		   canvas.height = settings.maxHistory / 40;
-		   canvas.style.position = 'absolute';
-		   canvas.style.bottom =  "15px";
-		   canvas.style.left = '150px';
-		   canvas.style.width = '100%';
+    	var canvas = document.createElement( 'canvas' );
 	    var context = canvas.getContext( '2d' );
 		context.fillStyle = 'rgba(127, 127, 127, 0.3)';
- 
 		
 		init();
 		animate();
@@ -90,6 +83,13 @@
 			text.style.width = '100%';
 			text.innerHTML = 'On: <span id="moleculeName" ></span>';
 
+		    canvas.width = settings.maxHistory;
+		    canvas.height = settings.maxHistory / 40;
+		    canvas.style.position = 'absolute';
+		    canvas.style.bottom =  "15px";
+		    canvas.style.left = '150px';
+		    canvas.style.width = '100%';
+
 			container.appendChild( title );
 			container.appendChild( energy );
 			container.appendChild( text );
@@ -111,10 +111,6 @@
 			controls.dynamicDampingFactor = 0.3;
 			
 			window.addEventListener( 'resize', onWindowResize, false );
-
-			// stats.showPanel(3); // 0: fps, 1: ms, 2: mb, 3+: custom
-		    // document.body.appendChild(stats.dom);
-		    // document.body.appendChild( canvas );
 		}
 
 
@@ -185,11 +181,13 @@
 
 			gui.close();
 		}
+
 		function onWindowResize() {
 			camera.aspect = window.innerWidth / window.innerHeight;
 			camera.updateProjectionMatrix();
 			renderer.setSize( window.innerWidth, window.innerHeight );
 		}
+
 		function onDocumentMouseMove( event ) {
 			event.preventDefault();
 			mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
@@ -230,6 +228,7 @@
 				document.getElementById( 'moleculeName' ).innerText = ""
 			}
 		}
+
 		function onDocumentMouseDown( event ) {
 			event.preventDefault();
 			raycaster.setFromCamera( mouse, camera );
@@ -243,6 +242,7 @@
 				container.style.cursor = 'move';
 			}
 		}
+
 		function onDocumentMouseUp( event ) {
 			event.preventDefault();
 			controls.enabled = true;
@@ -283,11 +283,6 @@
 				context.stroke();
 
 		}
-
-		function resetSys() {
-			// does nothing yet
-		}
-
 		function updatePosition(){
             var objects = scene.children
 
@@ -332,12 +327,13 @@
 		   }
 
 		function render() {
-		  settings.timeStep = optionController.timestep
+		   settings.timeStep = optionController.timestep
 
 		   settings.energyHistory.push(system.getEnergy())
 			if(settings.energyHistory.length > settings.maxHistory){ // keep only 500 history
 				settings.energyHistory.shift()
 			}
+
 			document.getElementById( 'energyVal' ).innerText = parseFloat(system.getEnergy()).toFixed(4);
 		
 			if(systemName != optionController.systemOption){
