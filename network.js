@@ -64,7 +64,6 @@ Node.prototype.computeForce = function(network = null){
 
 	this.edges.forEach(function(e, i){	
 		var dist = thisCopy.distanceTo(e.atom2.position)
-		dist = dist < 1 ? 1 : dist
 		var forceTmp = thisCopy.sub(e.atom2.position)
 		forceTmp.normalize()
 		forceTmp.multiplyScalar(settings.hookeConstant * (e.strength - dist))
@@ -202,6 +201,7 @@ Network.prototype.getEnergy = function(){
         var thisCopy = new THREE.Vector3(node.position.x, node.position.y, node.position.z)
         node.edges.forEach(function(e, i){ 
             var dist = thisCopy.distanceTo(e.atom2.position)
+            dist = dist <  settings.epsilon ? settings.epsilon : dist;
             energy += 0.5 * settings.hookeConstant * dist * dist / (settings.unitScale * settings.unitScale);
         })
     })
@@ -234,6 +234,7 @@ dampingFactor  : 0.8,
 timeStep : 0.2,
 opacityThreshold : 0.1,
 opacityThresholdScale : 0.1 * 10000,
+epsilon: 0.000000000001
 }
 
 /******************************    Hydrogen	   *********************************/
