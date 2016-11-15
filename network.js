@@ -2,19 +2,17 @@
 /********************************    Edges     *************************************/
 /***********************************************************************************/
 /***********************************************************************************/
+
 var Edge = function(atom1, atom2, equilibrium) {
     this.atom1 = atom1
     this.atom2 = atom2
     this.equilibrium = equilibrium
     this.visited = false
-        // this.equilibrium_ = equilibrium
-
 }
 
 Edge.prototype.reset = function() {
     this.visited = false
 }
-
 
 Edge.prototype.getSecond = function() {
     return this.atom2
@@ -98,9 +96,6 @@ Node.prototype.updateVelocity = function(t) { // v_i = (x_i - x_{i-1})/timestep
     var oldposCopy = new THREE.Vector3(this.oldposition.x, this.oldposition.y, this.oldposition.z);
     var c = posCopy.sub(oldposCopy);
     this.velocity = c.divideScalar(t);
-
-    // 	var c = new THREE.Vector3(this.acceleration.x, this.acceleration.y, this.acceleration.z);
-    //  this.velocity.add(c.multiplyScalar(t))
 }
 
 
@@ -230,7 +225,6 @@ Network.prototype.getEnergy = function() {
             var x = e.equilibrium - dist;
             energy += 0.5 * settings.hookeConstant * x * x;
         })
-
     })
     energy = energy / (settings.unitScale * settings.unitScale);
 
@@ -271,7 +265,7 @@ settings = {
 parameters = {
     "H2": {
         "HH": 0.74, // equilibrium bond distance in angstroms
-        "opacityThresholdScale": 2 * settings.unitScale
+        "opacityThresholdScale": 2 * settings.unitScale // update these to van der waals radii
     },
     "H2O": {
         "OH": 0.96,
