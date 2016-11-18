@@ -238,6 +238,20 @@ Network.prototype.getForceAcc = function() {
     })
 }
 
+Network.prototype.getCenter = function() {
+    var center = {x:0, y:0, z:0}
+    this.nodeList.forEach(function(n, i) {
+        center.x += n.position.x
+        center.y += n.position.y
+        center.z += n.position.z
+    })
+    center.x /= this.nodeList.length
+    center.y /= this.nodeList.length
+    center.z /= this.nodeList.length
+
+    return center
+}
+
 Network.prototype.updateNodes = function() {
     this.nodeList.forEach(function(n, i) {
         n.updateVelocity(settings.timeStep)
