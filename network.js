@@ -259,6 +259,15 @@ Network.prototype.updateNodes = function() {
     })
 }
 
+Network.prototype.updatePosition = function(id){
+    this.nodeList.forEach(function(n, i) {
+        // console.log(n.aid + "," + id)
+        if(n.aid == id){
+            n.oldposition = n.position
+        }
+    })
+}
+
 /***********************************************************************************/
 /******************************    Build Network   *********************************/
 /***********************************************************************************/
@@ -423,7 +432,6 @@ function buildO2() {
         acceleration: new THREE.Vector3(0, 0, 0),
         force: new THREE.Vector3(0, 0, 0)
     })
-
 
     node1.addNeighbor(node2, parameters.O2.OO * settings.unitScale)
     O2 = new Network(node1)
