@@ -253,6 +253,7 @@
         event.preventDefault();
         controls.enabled = true;
         if (INTERSECTED) {
+//            SELECTED.oldposition = position;
             SELECTED = null;
         }
         container.style.cursor = 'auto';
@@ -354,10 +355,10 @@
         updatePosition()
         controls.update();
         // only update forces if an atom is not currently clicked on
-        // if ! SELECTED {
+        if (SELECTED == null) {
         system.getForceAcc()
         system.updateNodes()
-        //}
+        }
         renderer.render(scene, camera);
 
     }
