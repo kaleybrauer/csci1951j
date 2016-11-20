@@ -278,7 +278,7 @@ Network.prototype.updatePosition = function(id){
 // unit scale: 2000 units -> ~7 angstroms
 settings = {
     unitScale: 285,
-    hookeConstant: 0.03, // in amu/s^2 ---- not actually correct
+    hookeConstant: 0.3, // in amu/s^2 ---- change this to more appropriate value
     timeStep: 0.2,
     energyHistory: [],
     maxHistory: 1000,
