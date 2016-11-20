@@ -259,7 +259,6 @@
         event.preventDefault();
         controls.enabled = true;
         if (INTERSECTED) {
-//            SELECTED.oldposition = position;
             SELECTED = null;
         }
         container.style.cursor = 'auto';
@@ -346,13 +345,6 @@
     function render() {
         settings.timeStep = optionController.timestep
 
-        settings.energyHistory.push(system.getEnergy())
-        if (settings.energyHistory.length > settings.maxHistory) { // keep only 500 history
-            settings.energyHistory.shift()
-        }
-
-        document.getElementById('energyVal').innerText = parseFloat(system.getEnergy()).toFixed(4);
-
         if (systemName != optionController.systemOption) {
             systemName = optionController.systemOption
             system = systems[systemName]
@@ -360,11 +352,17 @@
         }
         updatePosition()
         controls.update();
-        // only update forces if an atom is not currently clicked on
+        // only update forces and energies if an atom is not currently clicked on
         if (SELECTED != null) {
             system.selectID = SELECTED.name.split(':')[1]
             system.updatePosition(+system.selectID)
         } else {
+            settings.energyHistory.push(system.getEnergy())
+            if (settings.energyHistory.length > settings.maxHistory) { // keep only 500 history
+                settings.energyHistory.shift()
+            }
+
+            document.getElementById('energyVal').innerText = parseFloat(system.getEnergy()).toFixed(4);
             system.getForceAcc()
             system.updateNodes()
         }
