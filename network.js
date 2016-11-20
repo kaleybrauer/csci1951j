@@ -238,10 +238,33 @@ Network.prototype.getForceAcc = function() {
     })
 }
 
+Network.prototype.getCenter = function() {
+    var center = {x:0, y:0, z:0}
+    this.nodeList.forEach(function(n, i) {
+        center.x += n.position.x
+        center.y += n.position.y
+        center.z += n.position.z
+    })
+    center.x /= this.nodeList.length
+    center.y /= this.nodeList.length
+    center.z /= this.nodeList.length
+
+    return center
+}
+
 Network.prototype.updateNodes = function() {
     this.nodeList.forEach(function(n, i) {
         n.updateVelocity(settings.timeStep)
         n.updatePosition(settings.timeStep)
+    })
+}
+
+Network.prototype.updatePosition = function(id){
+    this.nodeList.forEach(function(n, i) {
+        // console.log(n.aid + "," + id)
+        if(n.aid == id){
+            n.oldposition = n.position
+        }
     })
 }
 
@@ -409,7 +432,6 @@ function buildO2() {
         acceleration: new THREE.Vector3(0, 0, 0),
         force: new THREE.Vector3(0, 0, 0)
     })
-
 
     node1.addNeighbor(node2, parameters.O2.OO * settings.unitScale)
     O2 = new Network(node1)
