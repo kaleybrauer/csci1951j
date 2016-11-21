@@ -318,6 +318,19 @@
                 //                		obj.position.z = (node.velocity.z * mass)
                 //              	}
 
+                // opacity corresponds to energy
+                // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
+                if (node.maxEnergy != 0) {
+                    obj.material.opacity = 0.2 + 0.8*node.energy/node.maxEnergy
+                    console.log(node.energy)
+                    console.log(node.maxEnergy)
+                }
+                if (node.maxEnergy == 0) {
+                    obj.material.opacity = 1
+                }        
+                obj.material.needsUpdate = true
+                obj.material.transparent = true
+
             }
 
             if (obj.type == "LineSegments") {
@@ -356,7 +369,8 @@
         // only update forces and energies if an atom is not currently clicked on
         if (SELECTED != null) {
             system.selectID = SELECTED.name.split(':')[1]
-            system.updatePosition(+system.selectID)
+            system.moveAtom(+system.selectID)
+            system.setMaxEnergies()
         } else {
             // system energy
             settings.energyHistory.push(system.getEnergy())
