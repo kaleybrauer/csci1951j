@@ -357,12 +357,13 @@
             system.selectID = SELECTED.name.split(':')[1]
             system.updatePosition(+system.selectID)
         } else {
+            // system energy
             settings.energyHistory.push(system.getEnergy())
             if (settings.energyHistory.length > settings.maxHistory) { // keep only 500 history
                 settings.energyHistory.shift()
             }
-
             document.getElementById('energyVal').innerText = parseFloat(system.getEnergy()).toFixed(4);
+            // forces & atom energy
             system.getForceAcc()
             system.updateNodes()
         }
