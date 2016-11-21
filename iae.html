@@ -348,6 +348,7 @@
         if (systemName != optionController.systemOption) {
             systemName = optionController.systemOption
             system = systems[systemName]
+            settings.energyHistory = []
             setupSystem();
         }
         updatePosition()
