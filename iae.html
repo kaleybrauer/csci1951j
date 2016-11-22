@@ -141,6 +141,46 @@
             scene.add(node.atom);
             objects.push(node.atom)
 
+            var momentumX =  new THREE.Geometry()
+            var lineMaterialX =  new THREE.LineBasicMaterial({
+                        color: parameters.color.momentum,
+                        linewidth: 1
+            })
+            momentumX.vertices.push(node.atom.position)
+            momentumX.vertices.push(node.getMomentumX())
+            var lineX = new THREE.LineSegments(momentumX, lineMaterialX);
+            lineX.name = "momentum:" + node.aid + ":x"
+            lineX.visible = false
+
+
+            var momentumY =  new THREE.Geometry()
+            var lineMaterialY =  new THREE.LineBasicMaterial({
+                        color: parameters.color.momentum,
+                        linewidth: 1
+            })
+            momentumY.vertices.push(node.atom.position)
+            momentumY.vertices.push(node.getMomentumY())
+            var lineY = new THREE.LineSegments(momentumY, lineMaterialY);
+            lineY.name = "momentum:" + node.aid + ":y"
+            lineY.visible = false
+
+
+
+            var momentumZ =  new THREE.Geometry()
+            var lineMaterialZ =  new THREE.LineBasicMaterial({
+                        color: parameters.color.momentum,
+                        linewidth: 1
+            })
+            momentumZ.vertices.push(node.atom.position)
+            momentumZ.vertices.push(node.getMomentumZ())
+            var lineZ = new THREE.LineSegments(momentumZ, lineMaterialZ);
+            lineZ.name = "momentum:" + node.aid + ":z"
+            lineZ.visible = false
+
+            scene.add(lineX)
+            scene.add(lineY)
+            scene.add(lineZ)
+
             node.edges.forEach(function(edge) {
                 // set up the bond
                 if (edge.getVisited() == false) {
@@ -162,6 +202,9 @@
             })
         })
     }
+    function setDisplayType(t){
+       displayType = t
+    }
 
     function setupOptions() {
         // initializing options
@@ -177,7 +220,7 @@
         // simulation controls
         folder = gui.addFolder("Simulation Controls");
         folder.add(optionController, "timestep", 0.01, 2.0, 0.01).name("Timestep (s)").onChange(render);
-        folder.add(optionController, "displayOption", ["position", "momentum", "energy"]).name("Display").onChange(render);
+        folder.add(optionController, "displayOption", ["position", "momentum", "energy"]).name("Display").onChange(setDisplayType);
 
         // setup system
         folder = gui.addFolder("Setup System");
@@ -297,7 +340,7 @@
 
     }
 
-    function updatePosition() {
+    function updateScene() {
         var objects = scene.children
 
         objects.forEach(function(obj) {
@@ -310,17 +353,25 @@
                     obj.position.x = node.position.x
                     obj.position.y = node.position.y
                     obj.position.z = node.position.z
+                    obj.opacity = 1
+                    obj.material.needsUpdate = true
+                }
+                if (displayType == "momentum") {
+                     obj.material.opacity = 0.5
+                     obj.material.needsUpdate = true
+                     obj.material.transparent = true
                 }
 
-                //              	if (displayType == "momentum") {
-                //               	    obj.position.x = (node.velocity.x * mass)
-                //  	              	obj.position.y = (node.velocity.y * mass)
-                //                		obj.position.z = (node.velocity.z * mass)
-                //              	}
+              // things will fly out
+              // if (displayType == "momentum") {
+              //       obj.position.x = (node.velocity.x * node.mass)
+              //    	obj.position.y = (node.velocity.y * node.mass)
+              //       obj.position.z = (node.velocity.z * node.mass)
+              //  }
 
             }
 
-            if (obj.type == "LineSegments") {
+            if (obj.type == "LineSegments" && obj.name.split(":")[0] != "momentum" ) {
                 var ids = obj.name.split(":")
                 var aid1 = ids[1],
                     aid2 = ids[2]
@@ -339,6 +390,39 @@
                 obj.material.needsUpdate = true
                 obj.material.transparent = true
             }
+
+            if(displayType != "momentum" && obj.name.split(":")[0] == "momentum"){
+                obj.visible = false
+            }
+            if(displayType == "momentum" && obj.name.split(":")[0] == "momentum"){
+                obj.visible = true
+                var id = obj.name.split(":")[1]
+                var axis = obj.name.split(":")[2]
+                if(axis == 'x'){
+                    var node = system.getNode(id)
+                    obj.geometry.vertices[0] = node.position
+                    obj.geometry.vertices[1] = node.getMomentumX()
+                                                   .multiplyScalar(parameters[systemName].momentumScale)
+                                                   .add(node.position) 
+                    obj.geometry.verticesNeedUpdate = true
+               }
+               if(axis == 'y'){
+                    var node = system.getNode(id)
+                    obj.geometry.vertices[0] = node.position
+                    obj.geometry.vertices[1] = node.getMomentumY()
+                                                   .multiplyScalar(parameters[systemName].momentumScale)
+                                                   .add(node.position) 
+                    obj.geometry.verticesNeedUpdate = true
+               }
+               if(axis == 'z'){
+                    var node = system.getNode(id)
+                    obj.geometry.vertices[0] = node.position
+                    obj.geometry.vertices[1] = node.getMomentumZ()
+                                                   .multiplyScalar(parameters[systemName].momentumScale)
+                                                   .add(node.position) 
+                    obj.geometry.verticesNeedUpdate = true
+               }
+            }
         })
     }
 
@@ -350,7 +434,7 @@
             system = systems[systemName]
             setupSystem();
         }
-        updatePosition()
+        updateScene()
         controls.update();
         // only update forces and energies if an atom is not currently clicked on
         if (SELECTED != null) {
@@ -368,7 +452,6 @@
             system.updateNodes()
         }
         renderer.render(scene, camera);
-
     }
     </script>
 </body>

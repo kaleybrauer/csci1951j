@@ -186,6 +186,30 @@ Node.prototype.getAtomEnergy = function() {
     return energy
 }
 
+Node.prototype.getMomentumX = function() {
+    var velocityTmp = this.velocity.clone()
+    velocityTmp.y = 0
+    velocityTmp.z = 0
+    velocityTmp.multiplyScalar(this.mass)
+    return velocityTmp
+}
+
+Node.prototype.getMomentumY = function() {
+    var velocityTmp = this.velocity.clone()
+    velocityTmp.x = 0
+    velocityTmp.z = 0
+    velocityTmp.multiplyScalar(this.mass)
+    return velocityTmp
+}
+
+Node.prototype.getMomentumZ = function() {
+    var velocityTmp = this.velocity.clone()
+    velocityTmp.x = 0
+    velocityTmp.y = 0
+    velocityTmp.multiplyScalar(this.mass)
+    return velocityTmp
+}
+
 Node.prototype.setAtomEnergy = function(energy) {
     this.energy = energy
 }
@@ -308,15 +332,18 @@ settings = {
 parameters = {
     "H2": {
         "HH": 0.74, // equilibrium bond distance in angstroms
-        "opacityThresholdScale": 2 * settings.unitScale // update these to van der waals radii
+        "opacityThresholdScale": 2 * settings.unitScale, // update these to van der waals radii
+        "momentumScale": 10
     },
     "H2O": {
         "OH": 0.96,
-        "opacityThresholdScale": 2.5 * settings.unitScale
+        "opacityThresholdScale": 2.5 * settings.unitScale,
+        "momentumScale": 10
     },
     "O2": {
         "OO": 1.48,
-        "opacityThresholdScale": 2 * settings.unitScale
+        "opacityThresholdScale": 2 * settings.unitScale,
+        "momentumScale": 10
     },
     "mass": {
         "H": 1,
@@ -329,9 +356,10 @@ parameters = {
     "color": {
         "H": 0x008080,
         "O": 0xffffff,
-        "bond": 0x999999
+        "bond": 0x888888,
+        "momentum": 0xBBBBBB
     },
-    "bondwidth": 30
+    "bondwidth": 300
 
 }
 
