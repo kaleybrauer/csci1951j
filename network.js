@@ -1,3 +1,63 @@
+
+
+/* accepts parameters
+ * r  Object = {r:x, g:y, b:z}
+ * OR 
+ * r, g, b
+*/
+function RGBtoHSV(r, g, b) {
+    if (arguments.length === 1) {
+        g = r.g, b = r.b, r = r.r;
+    }
+    var max = Math.max(r, g, b), min = Math.min(r, g, b),
+        d = max - min,
+        h,
+        s = (max === 0 ? 0 : d / max),
+        v = max / 255;
+
+    switch (max) {
+        case min: h = 0; break;
+        case r: h = (g - b) + d * (g < b ? 6: 0); h /= 6 * d; break;
+        case g: h = (b - r) + d * 2; h /= 6 * d; break;
+        case b: h = (r - g) + d * 4; h /= 6 * d; break;
+    }
+
+    return {
+        h: h,
+        s: s,
+        v: v
+    }
+}
+ /* accepts parameters
+ * h  Object = {h:x, s:y, v:z}
+ * OR 
+ * h, s, v
+*/
+function HSVtoRGB(h, s, v) {
+    var r, g, b, i, f, p, q, t;
+    if (arguments.length === 1) {
+        s = h.s, v = h.v, h = h.h;
+    }
+    i = Math.floor(h * 6);
+    f = h * 6 - i;
+    p = v * (1 - s);
+    q = v * (1 - f * s);
+    t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+    }
+    return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+    };
+}
+
 /***********************************************************************************/
 /********************************    Edges     *************************************/
 /***********************************************************************************/
@@ -299,7 +359,7 @@ Network.prototype.getCenter = function() {
     center.y /= this.nodeList.length
     center.z /= this.nodeList.length
 
-    return center
+    return new THREE.Vector3(center.x, center.y, center.z)
 }
 
 Network.prototype.updateNodes = function() {
@@ -323,7 +383,7 @@ Network.prototype.setMaxEnergies = function() {
     this.nodeList.forEach(function(n,i) {
         n.energy = n.getAtomEnergy()
         n.maxEnergy = n.getAtomEnergy()
-        console.log(n.maxEnergy)
+        // console.log(n.maxEnergy)
     })
 }
 
@@ -348,17 +408,17 @@ parameters = {
     "H2": {
         "HH": 0.74, // equilibrium bond distance in angstroms
         "opacityThresholdScale": 2 * settings.unitScale, // update these to van der waals radii
-        "momentumScale": 10
+        "momentumScale": 1
     },
     "H2O": {
         "OH": 0.96,
         "opacityThresholdScale": 2.5 * settings.unitScale,
-        "momentumScale": 10
+        "momentumScale": 1
     },
     "O2": {
         "OO": 1.48,
         "opacityThresholdScale": 2 * settings.unitScale,
-        "momentumScale": 10
+        "momentumScale": 1
     },
     "mass": {
         "H": 1,
@@ -369,12 +429,18 @@ parameters = {
         "O": 0.60
     },
     "color": {
-        "H": 0x008080,
-        "O": 0xffffff,
-        "bond": 0x888888,
-        "momentum": 0xBBBBBB
+        "H": 'hsl(180, 100%, 25%)',
+        "O": 'hsl(180, 100%, 100%)',
+        "bond": 'hsl(7,0%,48%)',
+        "momentum": 'hsl(7,0%,48%)'
     },
-    "bondwidth": 300
+    "hsl":{
+        "H": {'h':'180', 's':'100%', 'l':'25%'},
+        "O": {'h':'180', 's':'100%', 'l':'100%'},
+        "bond": {'h':'7', 's':'0%', 'l':'48%'},
+        "momentum": {'h':'7', 's':'0%', 'l':'48%'},
+    },
+    "bondwidth": 10
 
 }
 
@@ -384,18 +450,18 @@ function buildH2O() {
     var atomGeo2 = new THREE.SphereGeometry(settings.unitScale * parameters.radius.H, 100, 100);
     var atomGeo3 = new THREE.SphereGeometry(settings.unitScale * parameters.radius.O, 100, 100);
 
-    var materialH = new THREE.MeshLambertMaterial({
+    var materialH1 = new THREE.MeshLambertMaterial({
         color: parameters.color.H
     })
-    var materialH = new THREE.MeshLambertMaterial({
+    var materialH2 = new THREE.MeshLambertMaterial({
         color: parameters.color.H
     })
     var materialO = new THREE.MeshLambertMaterial({
         color: parameters.color.O
     })
 
-    var atom1 = new THREE.Mesh(atomGeo1, materialH);
-    var atom2 = new THREE.Mesh(atomGeo2, materialH);
+    var atom1 = new THREE.Mesh(atomGeo1, materialH1);
+    var atom2 = new THREE.Mesh(atomGeo2, materialH2);
     var atom3 = new THREE.Mesh(atomGeo3, materialO);
 
     var node1 = new Node(atom1, 1, "H", {

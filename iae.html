@@ -54,7 +54,7 @@
         camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, - 500, 1000 );
         camera.position.x = 0;
         camera.position.y = 0;
-        camera.position.z = 200;
+        camera.position.z = 500;
 
 
         setupSystem();
@@ -212,7 +212,8 @@
             timestep: 0.05,
             systemOption: "H2", // which system we are showing
             displayOption: "position", // which display we are showing (in this case, position space)
-            energyOpacity: true // whether or not the energy is encoded in the opacity
+            energy: false, // whether or not the energy is encoded in the opacity
+            momentum: false
         };
 
         var folder;
@@ -224,8 +225,7 @@
 
         // display controls
         folder = gui.addFolder("Display");
-        folder.add(optionController, "displayOption", ["position", "momentum", "energy"]).name("Display").onChange(render);
-        folder.add(optionController, "energyOpacity").onChange(render);
+        folder.add(optionController, "displayOption", ["position" , "momentum", "energy"]).name("Display").onChange(setDisplayType);
 
         // setup system
         folder = gui.addFolder("Setup System");
@@ -344,6 +344,7 @@
 
     }
 
+
     function updateScene() {
         var objects = scene.children
 
@@ -353,13 +354,16 @@
                 var id = ids[1]
                 var node = system.getNode(id)
 
-                if (displayType == "position") {
-                    obj.position.x = node.position.x
-                    obj.position.y = node.position.y
-                    obj.position.z = node.position.z
+
+                obj.position.x = node.position.x
+                obj.position.y = node.position.y
+                obj.position.z = node.position.z
+
+                if(displayType == "position"){
                     obj.opacity = 1
                     obj.material.needsUpdate = true
                 }
+    
                 if (displayType == "momentum") {
                      obj.material.opacity = 0.5
                      obj.material.needsUpdate = true
@@ -375,9 +379,17 @@
 
                 // opacity corresponds to energy
                 // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
-                if (optionController.energyOpacity) {
+                if (displayType == "energy") {
                     if (node.maxEnergy != 0) {
-                        obj.material.opacity = 0.2 + 0.9*node.energy/node.maxEnergy
+                        // obj.material.opacity = 0.2 + 0.9 * node.energy / node.maxEnergy
+                        var mappingValue = 0.1 + 0.9 * node.energy / node.maxEnergy
+                        var target = Math.round(mappingValue * 100) + "%"
+                        var curHSL = parameters.hsl
+
+                        var updateHSL = "hsl(" + curHSL[obj.moleculeName].h + "," + target + "," + curHSL[obj.moleculeName].l + ")"
+                        obj.material.color.set(updateHSL)
+                        // console.log(curHSL[obj.moleculeName])
+                        // console.log(updateHSL)
                         // console.log(node.energy)
                         // console.log(node.maxEnergy)
                     }
@@ -385,10 +397,7 @@
                         obj.material.opacity = 1
                     }
                 }
-                // if the opacity = energy option is not selected
-                if (!optionController.energyOpacity) {
-                    obj.material.opacity = 1
-                }        
+      
                 obj.material.needsUpdate = true
                 obj.material.transparent = true
 
@@ -423,26 +432,26 @@
                 var axis = obj.name.split(":")[2]
                 if(axis == 'x'){
                     var node = system.getNode(id)
-                    obj.geometry.vertices[0] = node.position
+                    obj.geometry.vertices[0] = node.atom.position
                     obj.geometry.vertices[1] = node.getMomentumX()
                                                    .multiplyScalar(parameters[systemName].momentumScale)
-                                                   .add(node.position) 
+                                                   .add(node.atom.position) 
                     obj.geometry.verticesNeedUpdate = true
                }
                if(axis == 'y'){
                     var node = system.getNode(id)
-                    obj.geometry.vertices[0] = node.position
+                    obj.geometry.vertices[0] = node.atom.position
                     obj.geometry.vertices[1] = node.getMomentumY()
                                                    .multiplyScalar(parameters[systemName].momentumScale)
-                                                   .add(node.position) 
+                                                   .add(node.atom.position) 
                     obj.geometry.verticesNeedUpdate = true
                }
                if(axis == 'z'){
                     var node = system.getNode(id)
-                    obj.geometry.vertices[0] = node.position
+                    obj.geometry.vertices[0] = node.atom.position
                     obj.geometry.vertices[1] = node.getMomentumZ()
                                                    .multiplyScalar(parameters[systemName].momentumScale)
-                                                   .add(node.position) 
+                                                   .add(node.atom.position) 
                     obj.geometry.verticesNeedUpdate = true
                }
             }
@@ -476,6 +485,11 @@
             system.getForceAcc()
             system.updateNodes()
         }
+        // console.log( camera.position)
+         // camera.position.z -= 1
+        var center = system.getCenter()
+        // camera.position.x = center.x
+        // camera.position.y = center.y
         renderer.render(scene, camera);
     }
     </script>
