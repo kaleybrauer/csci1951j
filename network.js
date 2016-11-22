@@ -54,6 +54,8 @@ var Node = function(atom, aid, name,
     this.edges = edges;
     this.mass = props.mass;
     this.name = name;
+    this.energy = 0; // could have this properly calculated instead of assuming equilibrium
+    this.maxEnergy = 0;
 
     this.atom_ = this.atom.clone()
     this.position_ = this.position.clone()
@@ -66,6 +68,8 @@ Node.prototype.reset = function() {
     this.position = this.position_.clone()
     this.oldposition = this.position_.clone()
     this.acceleration = this.acceleration_
+    this.energy = 0; // same as above - could properly calculate
+    this.maxEnergy = 0;
         // TODO: FM why??????
         this.edges.forEach(function(e){
         	e.reset()
@@ -171,6 +175,25 @@ Node.prototype.getNeighbors = function() {
     return neighbors
 }
 
+Node.prototype.getAtomEnergy = function() {
+    var energy = 0;
+
+    var positionCopy = new THREE.Vector3(this.position.x, this.position.y, this.position.z);
+    this.edges.forEach(function(e, i) {
+        var dist = positionCopy.distanceTo(e.atom2.position);
+        var x = e.equilibrium - dist;
+        energy += 0.5 * settings.hookeConstant * x * x;
+    })
+
+    energy = energy / (settings.unitScale * settings.unitScale);
+ //   console.log(energy)
+    return energy
+}
+
+Node.prototype.setAtomEnergy = function(energy) {
+    this.energy = energy
+}
+
 /***********************************************************************************/
 /********************************    Network   *************************************/
 /***********************************************************************************/
@@ -219,6 +242,8 @@ Network.prototype.reset = function() {
 Network.prototype.getEnergy = function() {
     var energy = 0;
     this.nodeList.forEach(function(node) {
+        // energy += node.getAtomEnergy
+
         var thisCopy = new THREE.Vector3(node.position.x, node.position.y, node.position.z);
         node.edges.forEach(function(e, i) {
             var dist = thisCopy.distanceTo(e.atom2.position);
@@ -226,6 +251,7 @@ Network.prototype.getEnergy = function() {
             energy += 0.5 * settings.hookeConstant * x * x;
         })
     })
+
     energy = energy / (settings.unitScale * settings.unitScale);
 
     return energy
@@ -256,15 +282,24 @@ Network.prototype.updateNodes = function() {
     this.nodeList.forEach(function(n, i) {
         n.updateVelocity(settings.timeStep)
         n.updatePosition(settings.timeStep)
+        n.setAtomEnergy(n.getAtomEnergy())
     })
 }
 
-Network.prototype.updatePosition = function(id){
+Network.prototype.moveAtom = function(id){
     this.nodeList.forEach(function(n, i) {
         // console.log(n.aid + "," + id)
         if(n.aid == id){
             n.oldposition = n.position
         }
+    })
+}
+
+Network.prototype.setMaxEnergies = function() {
+    this.nodeList.forEach(function(n,i) {
+        n.energy = n.getAtomEnergy()
+        n.maxEnergy = n.getAtomEnergy()
+        console.log(n.maxEnergy)
     })
 }
 
@@ -278,7 +313,7 @@ Network.prototype.updatePosition = function(id){
 // unit scale: 2000 units -> ~7 angstroms
 settings = {
     unitScale: 285,
-    hookeConstant: 0.03, // in amu/s^2 ---- not actually correct
+    hookeConstant: 0.3, // in amu/s^2 ---- not actually correct, doublecheck vibrational modes
     timeStep: 0.2,
     energyHistory: [],
     maxHistory: 1000,
