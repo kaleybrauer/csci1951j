@@ -168,7 +168,8 @@
         optionController = {
             timestep: 0.05,
             systemOption: "H2", // which system we are showing
-            displayOption: "position" // which display we are showing (in this case, position space)
+            displayOption: "position", // which display we are showing (in this case, position space)
+            energyOpacity: true // whether or not the energy is encoded in the opacity
         };
 
         var folder;
@@ -177,7 +178,12 @@
         // simulation controls
         folder = gui.addFolder("Simulation Controls");
         folder.add(optionController, "timestep", 0.01, 2.0, 0.01).name("Timestep (s)").onChange(render);
+
+        // display controls
+        folder = gui.addFolder("Display");
         folder.add(optionController, "displayOption", ["position", "momentum", "energy"]).name("Display").onChange(render);
+        folder.add(optionController, "energyOpacity").onChange(render);
+
 
         // setup system
         folder = gui.addFolder("Setup System");
@@ -320,12 +326,18 @@
 
                 // opacity corresponds to energy
                 // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
-                if (node.maxEnergy != 0) {
-                    obj.material.opacity = 0.2 + 0.8*node.energy/node.maxEnergy
-                    console.log(node.energy)
-                    console.log(node.maxEnergy)
+                if (optionController.energyOpacity) {
+                    if (node.maxEnergy != 0) {
+                        obj.material.opacity = 0.2 + 0.9*node.energy/node.maxEnergy
+                        console.log(node.energy)
+                        console.log(node.maxEnergy)
+                    }
+                    if (node.maxEnergy == 0) {
+                        obj.material.opacity = 1
+                    }
                 }
-                if (node.maxEnergy == 0) {
+                // if the opacity = energy option is not selected
+                if (!optionController.energyOpacity) {
                     obj.material.opacity = 1
                 }        
                 obj.material.needsUpdate = true
