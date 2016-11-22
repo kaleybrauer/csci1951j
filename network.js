@@ -55,6 +55,7 @@ var Node = function(atom, aid, name,
     this.mass = props.mass;
     this.name = name;
     this.energy = 0; // could have this properly calculated instead of assuming equilibrium
+    this.maxEnergy = 0;
 
     this.atom_ = this.atom.clone()
     this.position_ = this.position.clone()
@@ -68,6 +69,7 @@ Node.prototype.reset = function() {
     this.oldposition = this.position_.clone()
     this.acceleration = this.acceleration_
     this.energy = 0; // same as above - could properly calculate
+    this.maxEnergy = 0;
         // TODO: FM why??????
         this.edges.forEach(function(e){
         	e.reset()
@@ -183,6 +185,8 @@ Node.prototype.getAtomEnergy = function() {
         energy += 0.5 * settings.hookeConstant * x * x;
     })
 
+    energy = energy / (settings.unitScale * settings.unitScale);
+ //   console.log(energy)
     return energy
 }
 
@@ -262,6 +266,8 @@ Network.prototype.reset = function() {
 Network.prototype.getEnergy = function() {
     var energy = 0;
     this.nodeList.forEach(function(node) {
+        // energy += node.getAtomEnergy
+
         var thisCopy = new THREE.Vector3(node.position.x, node.position.y, node.position.z);
         node.edges.forEach(function(e, i) {
             var dist = thisCopy.distanceTo(e.atom2.position);
@@ -269,6 +275,7 @@ Network.prototype.getEnergy = function() {
             energy += 0.5 * settings.hookeConstant * x * x;
         })
     })
+
     energy = energy / (settings.unitScale * settings.unitScale);
 
     return energy
@@ -303,12 +310,20 @@ Network.prototype.updateNodes = function() {
     })
 }
 
-Network.prototype.updatePosition = function(id){
+Network.prototype.moveAtom = function(id){
     this.nodeList.forEach(function(n, i) {
         // console.log(n.aid + "," + id)
         if(n.aid == id){
             n.oldposition = n.position
         }
+    })
+}
+
+Network.prototype.setMaxEnergies = function() {
+    this.nodeList.forEach(function(n,i) {
+        n.energy = n.getAtomEnergy()
+        n.maxEnergy = n.getAtomEnergy()
+        console.log(n.maxEnergy)
     })
 }
 
