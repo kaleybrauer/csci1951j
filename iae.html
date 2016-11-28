@@ -385,7 +385,6 @@
                         var mappingValue = 0.1 + 0.9 * node.energy / node.maxEnergy
                         var target = Math.round(mappingValue * 100) + "%"
                         var curHSL = parameters.hsl
-
                         var updateHSL = "hsl(" + curHSL[obj.moleculeName].h + "," + target + "," + curHSL[obj.moleculeName].l + ")"
                         obj.material.color.set(updateHSL)
                         // console.log(curHSL[obj.moleculeName])
