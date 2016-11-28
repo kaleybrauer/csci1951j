@@ -260,6 +260,20 @@ Node.prototype.setAtomEnergy = function(energy) {
     this.energy = energy
 }
 
+Node.prototype.updateAtomEnergy = function() {
+    var energy = 0;
+
+    var positionCopy = new THREE.Vector3(this.position.x, this.position.y, this.position.z);
+    this.edges.forEach(function(e, i) {
+        var dist = positionCopy.distanceTo(e.atom2.position);
+        var x = e.equilibrium - dist;
+        energy += 0.5 * settings.hookeConstant * x * x;
+    })
+
+    energy = energy / (settings.unitScale * settings.unitScale);
+    this.energy = energy
+}
+
 /***********************************************************************************/
 /********************************    Network   *************************************/
 /***********************************************************************************/
@@ -348,7 +362,8 @@ Network.prototype.updateNodes = function() {
     this.nodeList.forEach(function(n, i) {
         n.updateVelocity(settings.timeStep)
         n.updatePosition(settings.timeStep)
-        n.setAtomEnergy(n.getAtomEnergy())
+        n.updateAtomEnergy()
+        console.log(n)
     })
 }
 
@@ -356,7 +371,7 @@ Network.prototype.moveAtom = function(id){
     this.nodeList.forEach(function(n, i) {
         // console.log(n.aid + "," + id)
         if(n.aid == id){
-            n.oldposition = n.position
+            n.oldposition = n.position.copy()
         }
     })
 }
