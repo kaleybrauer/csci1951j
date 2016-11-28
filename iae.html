@@ -212,7 +212,7 @@
             timestep: 0.05,
             systemOption: "H2", // which system we are showing
             displayOption: "position", // which display we are showing (in this case, position space)
-            energy: false, // whether or not the energy is encoded in the opacity
+            energyOpacity: false, // whether or not the energy is encoded in the opacity
             momentum: false
         };
 
@@ -226,6 +226,8 @@
         // display controls
         folder = gui.addFolder("Display");
         folder.add(optionController, "displayOption", ["position" , "momentum", "energy"]).name("Display").onChange(setDisplayType);
+        folder.add(optionController, "energyOpacity").name('Energy as Opacity').onChange(render);
+        folder.add(optionController, "momentum").name('Momentum Vector').onChange(render);
 
         // setup system
         folder = gui.addFolder("Setup System");
@@ -359,16 +361,6 @@
                 obj.position.y = node.position.y
                 obj.position.z = node.position.z
 
-                if(displayType == "position"){
-                    obj.opacity = 1
-                    obj.material.needsUpdate = true
-                }
-    
-                if (displayType == "momentum") {
-                     obj.material.opacity = 0.5
-                     obj.material.needsUpdate = true
-                     obj.material.transparent = true
-                }
 
               // things will fly out
               // if (displayType == "momentum") {
@@ -379,26 +371,25 @@
 
                 // opacity corresponds to energy
                 // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
-                if (displayType == "energy") {
+                // opacity corresponds to energy
+                // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
+                if (optionController.momentum) {
+                     obj.material.opacity = 0.5
+                }
+                if (optionController.energyOpacity) {
                     if (node.maxEnergy != 0) {
-                        // obj.material.opacity = 0.2 + 0.9 * node.energy / node.maxEnergy
-                        var mappingValue = 0.1 + 0.9 * node.energy / node.maxEnergy
-                        var target = Math.round(mappingValue * 100) + "%"
-                        var curHSL = parameters.hsl
-
-                        var updateHSL = "hsl(" + curHSL[obj.moleculeName].h + "," + target + "," + curHSL[obj.moleculeName].l + ")"
-                        obj.material.color.set(updateHSL)
-                        // console.log(curHSL[obj.moleculeName])
-                        // console.log(updateHSL)
-                        // console.log(node.energy)
-                        // console.log(node.maxEnergy)
-                        obj.opacity = 1
+                        obj.material.opacity = 0.2 + 0.9*node.energy/node.maxEnergy
+                        console.log(node.energy)
+                        console.log(node.maxEnergy)
                     }
                     if (node.maxEnergy == 0) {
                         obj.material.opacity = 1
                     }
                 }
-      
+                // if the opacity = energy option is not selected
+                if (!optionController.energyOpacity && !optionController.momentum) {
+                    obj.material.opacity = 1
+                }        
                 obj.material.needsUpdate = true
                 obj.material.transparent = true
 
@@ -424,10 +415,10 @@
                 obj.material.transparent = true
             }
 
-            if(displayType != "momentum" && obj.name.split(":")[0] == "momentum"){
+            if(!optionController.momentum && obj.name.split(":")[0] == "momentum"){
                 obj.visible = false
             }
-            if(displayType == "momentum" && obj.name.split(":")[0] == "momentum"){
+            if(optionController.momentum && obj.name.split(":")[0] == "momentum"){
                 obj.visible = true
                 var id = obj.name.split(":")[1]
                 var axis = obj.name.split(":")[2]
