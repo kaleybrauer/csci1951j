@@ -21,12 +21,15 @@
     <script src="network.js"></script>
     <script>
     var container;
-    var camera, controls, scene, renderer;
-    var optionController;
-    var timestep;
+    var camera, controls, scene, renderer, objects = [];
+    var options = {
+            timestep: 0.05,
+            systemOption: "H2",         // which system we are showing
+            displayOption: "position",  // which display we are showing (in this case, position space)
+            "energy as opacity": false, // whether or not the energy is encoded in the opacity
+            "momentum as vector": false
+        };
     var energyVal = 0;
-    var systemOption;
-    var objects = [];
     var plane = new THREE.Plane();
     var raycaster = new THREE.Raycaster();
     var mouse = new THREE.Vector2(),
@@ -34,10 +37,7 @@
         intersection = new THREE.Vector3(),
         INTERSECTED, SELECTED;
 
-    var systemName = "H2",
-        system = systems[systemName], // which system to show 
-        displayType = "position";
-
+    var system = systems[options.systemOption]
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
     context.fillStyle = 'rgba(127, 127, 127, 0.3)';
@@ -45,23 +45,27 @@
     init();
     animate();
 
-    // init the scene
+   /************************************************************************************/
+   /************************************************************************************/
+   /************************************* init the scene  ******************************/
+   /************************************************************************************/
+   /************************************************************************************/
+
     function init() {
         container = document.createElement('div');
         document.body.appendChild(container);
-        // camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 10000);
-        // camera.position.z = 500;
+        // using orthographic camera
         camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, - 500, 1000 );
         camera.position.x = 0;
         camera.position.y = 0;
         camera.position.z = 500;
-
 
         setupSystem();
 
         renderer = new THREE.WebGLRenderer({
             antialias: true
         });
+
         renderer.setClearColor(0xf0f0f0);
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -74,7 +78,7 @@
         title.style.top = '10px';
         title.style.textAlign = 'center';
         title.style.width = '100%';
-        title.innerHTML = 'Interactive Atomistic Environment for ' + systemName;
+        title.innerHTML = 'Interactive Atomistic Environment for ' + options.systemOption;
 
         // placing energy marker
         var energy = document.createElement('div');
@@ -105,7 +109,7 @@
         container.appendChild(text);
         container.appendChild(canvas);
 
-        setupOptions()
+        setupOptions();
 
         renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
         renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
@@ -123,64 +127,47 @@
         window.addEventListener('resize', onWindowResize, false);
     }
 
-    // set up which one to show
+   /************************************************************************************/
+   /************************************************************************************/
+   /*************************** set up the system to show  ***************************/
+   /************************************************************************************/
+   /************************************************************************************/
     function setupSystem() {
+        system = systems[options.systemOption]
+        settings.energyHistory = []
         objects = []
+        
         scene = new THREE.Scene();
         scene.add(new THREE.AmbientLight(0x505050));
+
         var light = new THREE.SpotLight(0xffffff, 1.5);
         light.position.set(0, 500, 2000);
         scene.add(light);
 
         var atomList = system.getNodeList();
 
+        // go through the list and add each node (atom) to the scene
         atomList.forEach(function(node) {
             node.atom.name = "atom:" + node.aid;
             node.atom.moleculeName = node.name
-                // console.log(node)
             scene.add(node.atom);
             objects.push(node.atom)
 
-            var momentumX =  new THREE.Geometry()
-            var lineMaterialX =  new THREE.LineBasicMaterial({
+            // add the vector to show momentum but make it invisible
+            var momentumGeo =  new THREE.Geometry()
+            var lineMaterial =  new THREE.LineBasicMaterial({
                         color: parameters.color.momentum,
                         linewidth: 1
             })
-            momentumX.vertices.push(node.atom.position)
-            momentumX.vertices.push(node.getMomentumX())
-            var lineX = new THREE.LineSegments(momentumX, lineMaterialX);
-            lineX.name = "momentum:" + node.aid + ":x"
-            lineX.visible = false
+            momentumGeo.vertices.push(node.atom.position)
+            momentumGeo.vertices.push(node.getMomentum())
+            var momentumLine = new THREE.LineSegments(momentumGeo, lineMaterial);
+            momentumLine.name = "momentum";
+            momentumLine.visible = false
 
+            scene.add(momentumLine)
 
-            var momentumY =  new THREE.Geometry()
-            var lineMaterialY =  new THREE.LineBasicMaterial({
-                        color: parameters.color.momentum,
-                        linewidth: 1
-            })
-            momentumY.vertices.push(node.atom.position)
-            momentumY.vertices.push(node.getMomentumY())
-            var lineY = new THREE.LineSegments(momentumY, lineMaterialY);
-            lineY.name = "momentum:" + node.aid + ":y"
-            lineY.visible = false
-
-
-
-            var momentumZ =  new THREE.Geometry()
-            var lineMaterialZ =  new THREE.LineBasicMaterial({
-                        color: parameters.color.momentum,
-                        linewidth: 1
-            })
-            momentumZ.vertices.push(node.atom.position)
-            momentumZ.vertices.push(node.getMomentumZ())
-            var lineZ = new THREE.LineSegments(momentumZ, lineMaterialZ);
-            lineZ.name = "momentum:" + node.aid + ":z"
-            lineZ.visible = false
-
-            scene.add(lineX)
-            scene.add(lineY)
-            scene.add(lineZ)
-
+            // add the bond 
             node.edges.forEach(function(edge) {
                 // set up the bond
                 if (edge.getVisited() == false) {
@@ -202,35 +189,42 @@
             })
         })
     }
-    function setDisplayType(t){
-       displayType = t
-    }
+
+   /************************************************************************************/
+   /************************************************************************************/
+   /************************** called when changing options  ***************************/
+   /************************************************************************************/
+   /************************************************************************************/
 
     function setupOptions() {
-        // initializing options
-        optionController = {
-            timestep: 0.05,
-            systemOption: "H2", // which system we are showing
-            displayOption: "position", // which display we are showing (in this case, position space)
-            energy: false, // whether or not the energy is encoded in the opacity
-            momentum: false
-        };
 
         var folder;
-        var gui = new dat.GUI();
+        var gui = new dat.GUI( { autoPlace: true, width: 320});
 
         // simulation controls
         folder = gui.addFolder("Simulation Controls");
-        folder.add(optionController, "timestep", 0.01, 2.0, 0.01).name("Timestep (s)").onChange(render);
+        folder.add(options, "timestep", 0.01, 2.0, 0.01).name("Timestep (s)").onChange(render);
 
         // display controls
         folder = gui.addFolder("Display");
-        folder.add(optionController, "displayOption", ["position" , "momentum", "energy"]).name("Display").onChange(setDisplayType);
+
+        // when one of the items is clicked, call the function setoptions.displayOption to swicth between different spaces
+        // bind the menu to options.displayOption
+        folder.add(options, "displayOption", ["position" , "momentum space", "energy space"]).name("Display").onChange(render);
+ 
+        // when the option is checked / unchecked, call the responding function     
+        // bind the menu to options["energy as opacity"] and options["momentum as vector"]
+        folder.add(options, "energy as opacity").onChange(render);
+        folder.add(options, "momentum as vector").onChange(render);
 
         // setup system
         folder = gui.addFolder("Setup System");
-        folder.add(optionController, "systemOption", ["H2", "O2", "H2O"]).name("System").onChange(render);
 
+        // if the user changes the system, reset
+        // bind the menu to options.systemOption
+        folder.add(options, "systemOption", ["H2", "O2", "H2O"]).name("System").onChange(setupSystem); // render
+
+        // reset the system
         var buttonReset = {
             resetSystem: function() {
                 system.reset()
@@ -242,12 +236,26 @@
         gui.close();
     }
 
+   /************************************************************************************/
+   /************************************************************************************/
+   /********************************* resize windows  **********************************/
+   /************************************************************************************/
+   /************************************************************************************/
+
     function onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
+        camera.updateViewMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+   /************************************************************************************/
+   /************************************************************************************/
+   /********************************* mouse movement  **********************************/
+   /************************************************************************************/
+   /************************************************************************************/
+
+   // handle which one is selected here
     function onDocumentMouseMove(event) {
         event.preventDefault();
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -269,7 +277,7 @@
                     camera.getWorldDirection(plane.normal),
                     INTERSECTED.position);
                 INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-                INTERSECTED.material.emissive.setHex(0x754200);
+                INTERSECTED.material.emissive.setHex(parameters.color.selected);
             }
             container.style.cursor = 'pointer';
 
@@ -289,6 +297,12 @@
         }
     }
 
+   /************************************************************************************/
+   /************************************************************************************/
+   /***************************** when mouse is pressed  *******************************/
+   /************************************************************************************/
+   /************************************************************************************/
+
     function onDocumentMouseDown(event) {
         event.preventDefault();
         raycaster.setFromCamera(mouse, camera);
@@ -303,6 +317,12 @@
         }
     }
 
+   /************************************************************************************/
+   /************************************************************************************/
+   /***************************** when mouse is released  ******************************/
+   /************************************************************************************/
+   /************************************************************************************/
+
     function onDocumentMouseUp(event) {
         event.preventDefault();
         controls.enabled = true;
@@ -312,15 +332,139 @@
         container.style.cursor = 'auto';
     }
 
+   /************************************************************************************/
+   /************************************************************************************/
+   /***************************** request for the next frame  **************************/
+   /************************************************************************************/
+   /************************************************************************************/
+
     function animate() {
         setTimeout(function() {
             requestAnimationFrame(animate);
             render();
-        }, 1000 / 25); // decrease the frame rate
+        }, 1000 / 25); // decrease the frame rate to 1000 / 25
+    }
 
-        var time = performance.now() / 1000;
+   /************************************************************************************/
+   /************************************************************************************/
+   /********** update the scene according to the different display types  **************/
+   /************************************************************************************/
+   /************************************************************************************/
+
+    function updateScene() {
+        var objects = scene.children
+
+        objects.forEach(function(obj) {
+
+            // if this is a node (atom)
+            if (obj.type == "Mesh") {
+                var ids = obj.name.split(":")
+                var id = ids[1]
+                var node = system.getNode(id)
+
+                if(options.displayOption == "position"){
+                    obj.position.x = node.position.x
+                    obj.position.y = node.position.y
+                    obj.position.z = node.position.z
+                    obj.material.opacity = 1
+                    obj.material.needsUpdate = true
+                }
+    
+                // if (options.displayOption == "momentum space") {
+                //      obj.material.opacity = 0.5
+                //      obj.material.needsUpdate = true
+                //      obj.material.transparent = true
+                // }
+
+              if (options.displayOption == "momentum space") {
+                    obj.position.x = node.velocity.x * node.mass
+                 	obj.position.y = node.velocity.y * node.mass
+                    obj.position.z = node.velocity.z * node.mass
+               }
+
+                // opacity corresponds to energy
+                // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
+                if (options.displayOption == "energy space") {
+                    if (node.maxEnergy != 0) {
+                        // obj.material.opacity = 0.2 + 0.9 * node.energy / node.maxEnergy
+                        obj.position.z = 0.2 + 0.9 * node.energy / node.maxEnergy
+                    }
+                    if (node.maxEnergy == 0) {
+                        obj.material.opacity = 1
+                    }
+                }
+               
+               if(options["momentum as vector"]){
+                    obj.material.opacity *= 0.9
+               }
+               
+                obj.material.needsUpdate = true
+                obj.material.transparent = true
+
+            }
+
+
+            // if this is a bond (line segments + not named as momentum)
+            if (obj.type == "LineSegments" && obj.name != "momentum" ) {
+                var ids = obj.name.split(":")
+                var aid1 = ids[1],
+                    aid2 = ids[2]
+                var atom1 = scene.getObjectByName("atom:" + aid1)
+                var atom2 = scene.getObjectByName("atom:" + aid2);
+                var p1 = atom1.position,
+                    p2 = atom2.position
+                var dist = p1.distanceTo(p2)
+
+                obj.geometry.vertices[0] = p1.clone()
+                obj.geometry.vertices[1] = p2.clone()
+
+                obj.geometry.verticesNeedUpdate = true
+
+                obj.material.opacity = dist > parameters[options.systemOption].opacityThresholdScale ? 0 : (1 - dist / parameters[options.systemOption].opacityThresholdScale)
+                obj.material.needsUpdate = true
+                obj.material.transparent = true
+            }
+
+            // console.log
+            if(options.displayOption != "momentum space" && obj.name == "momentum"){
+                obj.visible = false
+            }
+            if(options.displayOption == "momentum space" && obj.name == "momentum"){
+                obj.visible = true
+                var id = obj.name.split(":")[1]
+                var axis = obj.name.split(":")[2]
+                if(axis == 'x'){
+                    var node = system.getNode(id)
+                    obj.geometry.vertices[0] = node.atom.position
+                    obj.geometry.vertices[1] = node.getMomentumX()
+                                                   .multiplyScalar(parameters[options.systemOption].momentumScale)
+                                                   .add(node.atom.position) 
+                    obj.geometry.verticesNeedUpdate = true
+               }
+               if(axis == 'y'){
+                    var node = system.getNode(id)
+                    obj.geometry.vertices[0] = node.atom.position
+                    obj.geometry.vertices[1] = node.getMomentumY()
+                                                   .multiplyScalar(parameters[options.systemOption].momentumScale)
+                                                   .add(node.atom.position) 
+                    obj.geometry.verticesNeedUpdate = true
+               }
+               if(axis == 'z'){
+                    var node = system.getNode(id)
+                    obj.geometry.vertices[0] = node.atom.position
+                    obj.geometry.vertices[1] = node.getMomentumZ()
+                                                   .multiplyScalar(parameters[options.systemOption].momentumScale)
+                                                   .add(node.atom.position) 
+                    obj.geometry.verticesNeedUpdate = true
+               }
+            }
+        })
+    }
+
+
+
+    function drawEnergyHistory(){
         context.clearRect(0, 0, canvas.width, canvas.height);
-
         var maxEnergy = Math.max.apply(null, settings.energyHistory) // 4
 
         if (settings.energyHistory > 0)
@@ -341,132 +485,19 @@
             context.lineTo(x, y);
         }
         context.stroke();
-
     }
 
-
-    function updateScene() {
-        var objects = scene.children
-
-        objects.forEach(function(obj) {
-            if (obj.type == "Mesh") {
-                var ids = obj.name.split(":")
-                var id = ids[1]
-                var node = system.getNode(id)
-
-
-                obj.position.x = node.position.x
-                obj.position.y = node.position.y
-                obj.position.z = node.position.z
-
-                if(displayType == "position"){
-                    obj.opacity = 1
-                    obj.material.needsUpdate = true
-                }
-    
-                if (displayType == "momentum") {
-                     obj.material.opacity = 0.5
-                     obj.material.needsUpdate = true
-                     obj.material.transparent = true
-                }
-
-              // things will fly out
-              // if (displayType == "momentum") {
-              //       obj.position.x = (node.velocity.x * node.mass)
-              //    	obj.position.y = (node.velocity.y * node.mass)
-              //       obj.position.z = (node.velocity.z * node.mass)
-              //  }
-
-                // opacity corresponds to energy
-                // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
-                if (displayType == "energy") {
-                    if (node.maxEnergy != 0) {
-                        // obj.material.opacity = 0.2 + 0.9 * node.energy / node.maxEnergy
-                        var mappingValue = 0.1 + 0.9 * node.energy / node.maxEnergy
-                        var target = Math.round(mappingValue * 100) + "%"
-                        var curHSL = parameters.hsl
-                        var updateHSL = "hsl(" + curHSL[obj.moleculeName].h + "," + target + "," + curHSL[obj.moleculeName].l + ")"
-                        obj.material.color.set(updateHSL)
-                        // console.log(curHSL[obj.moleculeName])
-                        // console.log(updateHSL)
-                        // console.log(node.energy)
-                        // console.log(node.maxEnergy)
-                        obj.opacity = 1
-                    }
-                    if (node.maxEnergy == 0) {
-                        obj.material.opacity = 1
-                    }
-                }
-      
-                obj.material.needsUpdate = true
-                obj.material.transparent = true
-
-            }
-
-            if (obj.type == "LineSegments" && obj.name.split(":")[0] != "momentum" ) {
-                var ids = obj.name.split(":")
-                var aid1 = ids[1],
-                    aid2 = ids[2]
-                var atom1 = scene.getObjectByName("atom:" + aid1)
-                var atom2 = scene.getObjectByName("atom:" + aid2);
-                var p1 = atom1.position,
-                    p2 = atom2.position
-                var dist = p1.distanceTo(p2)
-
-                obj.geometry.vertices[0] = p1.clone()
-                obj.geometry.vertices[1] = p2.clone()
-
-                obj.geometry.verticesNeedUpdate = true
-
-                obj.material.opacity = dist > parameters[systemName].opacityThresholdScale ? 0 : (1 - dist / parameters[systemName].opacityThresholdScale)
-                obj.material.needsUpdate = true
-                obj.material.transparent = true
-            }
-
-            if(displayType != "momentum" && obj.name.split(":")[0] == "momentum"){
-                obj.visible = false
-            }
-            if(displayType == "momentum" && obj.name.split(":")[0] == "momentum"){
-                obj.visible = true
-                var id = obj.name.split(":")[1]
-                var axis = obj.name.split(":")[2]
-                if(axis == 'x'){
-                    var node = system.getNode(id)
-                    obj.geometry.vertices[0] = node.atom.position
-                    obj.geometry.vertices[1] = node.getMomentumX()
-                                                   .multiplyScalar(parameters[systemName].momentumScale)
-                                                   .add(node.atom.position) 
-                    obj.geometry.verticesNeedUpdate = true
-               }
-               if(axis == 'y'){
-                    var node = system.getNode(id)
-                    obj.geometry.vertices[0] = node.atom.position
-                    obj.geometry.vertices[1] = node.getMomentumY()
-                                                   .multiplyScalar(parameters[systemName].momentumScale)
-                                                   .add(node.atom.position) 
-                    obj.geometry.verticesNeedUpdate = true
-               }
-               if(axis == 'z'){
-                    var node = system.getNode(id)
-                    obj.geometry.vertices[0] = node.atom.position
-                    obj.geometry.vertices[1] = node.getMomentumZ()
-                                                   .multiplyScalar(parameters[systemName].momentumScale)
-                                                   .add(node.atom.position) 
-                    obj.geometry.verticesNeedUpdate = true
-               }
-            }
-        })
-    }
+   /************************************************************************************/
+   /************************************************************************************/
+   /************ called all the time when requesting for the next frame  ***************/
+   /************************************************************************************/
+   /************************************************************************************/
 
     function render() {
-        settings.timeStep = optionController.timestep
+        drawEnergyHistory();
 
-        if (systemName != optionController.systemOption) {
-            systemName = optionController.systemOption
-            system = systems[systemName]
-            settings.energyHistory = []
-            setupSystem();
-        }
+        settings.timeStep = options.timestep
+
         updateScene()
         controls.update();
         // only update forces and energies if an atom is not currently clicked on
