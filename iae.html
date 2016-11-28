@@ -381,17 +381,16 @@
                 // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
                 if (displayType == "energy") {
                     if (node.maxEnergy != 0) {
+                        // if choose opacity
                         // obj.material.opacity = 0.2 + 0.9 * node.energy / node.maxEnergy
+                        // obj.material.transparent = true
+                       
                         var mappingValue = 0.1 + 0.9 * node.energy / node.maxEnergy
                         var target = Math.round(mappingValue * 100) + "%"
                         var curHSL = parameters.hsl
 
                         var updateHSL = "hsl(" + curHSL[obj.moleculeName].h + "," + target + "," + curHSL[obj.moleculeName].l + ")"
                         obj.material.color.set(updateHSL)
-                        // console.log(curHSL[obj.moleculeName])
-                        // console.log(updateHSL)
-                        // console.log(node.energy)
-                        // console.log(node.maxEnergy)
                         obj.opacity = 1
                     }
                     if (node.maxEnergy == 0) {

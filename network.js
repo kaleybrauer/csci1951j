@@ -400,7 +400,7 @@ settings = {
     hookeConstant: 0.3, // in amu/s^2 ---- not actually correct, doublecheck vibrational modes
     timeStep: 0.2,
     energyHistory: [],
-    maxHistory: 1000,
+    maxHistory: 800,
     energyUnitScale: 20
 }
 
