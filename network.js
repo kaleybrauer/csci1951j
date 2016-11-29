@@ -3,9 +3,9 @@
 /***********************************************************************************/
 /***********************************************************************************/
 
-var Edge = function(atom1, atom2, equilibrium) {
-    this.atom1 = atom1
-    this.atom2 = atom2
+var Edge = function(node1, node2, equilibrium) {
+    this.node1 = node1
+    this.node2 = node2
     this.equilibrium = equilibrium
     this.visited = false
 }
@@ -15,7 +15,7 @@ Edge.prototype.reset = function() {
 }
 
 Edge.prototype.getSecond = function() {
-    return this.atom2
+    return this.node2
 }
 
 Edge.prototype.getVisited = function() {
@@ -89,8 +89,9 @@ Node.prototype.getForce = function(network = null) {
     var posCopy = new THREE.Vector3(this.position.x, this.position.y, this.position.z)
 
     this.edges.forEach(function(e, i) {
-        var dist = posCopy.distanceTo(e.atom2.position)
-        var forceTmp = posCopy.sub(e.atom2.position)
+        var dist = posCopy.distanceTo(e.node2.position)
+        var forceTmp = posCopy.sub(e.node2.position)
+        // console.log(e.node2.position)
         forceTmp.normalize()
         forceTmp.multiplyScalar(settings.hookeConstant * (e.equilibrium - dist))
         newForce.add(forceTmp)
@@ -126,7 +127,7 @@ Node.prototype.setVelocity = function(velocity) {
 }
 
 Node.prototype.setPosition = function(position) {
-    this.position = position
+    this.position = position.clone()
 }
 
 Node.prototype.getVisited = function() {
@@ -139,10 +140,10 @@ Node.prototype.setVisited = function() {
 
 Node.prototype.setVisited = function(node) {
     this.edges.forEach(function(edge) {
-        if (edge.atom2.aid == node.aid) {
+        if (edge.node2.aid == node.aid) {
             edge.setVisited()
             node.edges.forEach(function(another) {
-                if (another.atom2.aid == this.aid) {
+                if (another.node2.aid == this.aid) {
                     another.edge.setVisited()
                 }
             })
@@ -186,7 +187,7 @@ Node.prototype.getAtomEnergy = function() {
 
     var positionCopy = new THREE.Vector3(this.position.x, this.position.y, this.position.z);
     this.edges.forEach(function(e, i) {
-        var dist = positionCopy.distanceTo(e.atom2.position);
+        var dist = positionCopy.distanceTo(e.node2.position);
         var x = e.equilibrium - dist;
         energy += 0.5 * settings.hookeConstant * x * x;
     })
@@ -211,7 +212,7 @@ Node.prototype.updateAtomEnergy = function() {
 
     var positionCopy = new THREE.Vector3(this.position.x, this.position.y, this.position.z);
     this.edges.forEach(function(e, i) {
-        var dist = positionCopy.distanceTo(e.atom2.position);
+        var dist = positionCopy.distanceTo(e.node2.position);
         var x = e.equilibrium - dist;
         energy += 0.5 * settings.hookeConstant * x * x;
     })
@@ -273,7 +274,7 @@ Network.prototype.getEnergy = function() {
 
         var thisCopy = new THREE.Vector3(node.position.x, node.position.y, node.position.z);
         node.edges.forEach(function(e, i) {
-            var dist = thisCopy.distanceTo(e.atom2.position);
+            var dist = thisCopy.distanceTo(e.node2.position);
             var x = e.equilibrium - dist;
             energy += 0.5 * settings.hookeConstant * x * x;
         })
@@ -332,6 +333,12 @@ Network.prototype.updateOldPositionToCurrentPosition = function(id){
 Network.prototype.updateCurrentPositionToOldPositionForAll = function(){
     this.nodeList.forEach(function(n, i) {
         n.position = n.oldposition.clone()
+    })
+}
+
+Network.prototype.copyAtomPositionToNodePosition = function(){
+    this.nodeList.forEach(function(n, i) {
+        n.position = n.atom.position.clone()
     })
 }
 

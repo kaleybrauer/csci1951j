@@ -24,7 +24,7 @@
     // this "options" variable controls everything
     // it would be binded to the UI in the function called "setUpOptions"
     var options = {
-            timestep: 0.01,
+            timestep: 0.05,
             systemOption: "H2",         // which system we are showing
             displayOption: "position",  // which display we are showing (in this case, position space)
             "energy as opacity": false, // whether or not the energy is encoded in the opacity
@@ -43,6 +43,7 @@
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
     var rollBackPosition = false
+    var enableMouseSelection = true
     context.fillStyle = 'rgba(127, 127, 127, 0.3)';
 
     init();
@@ -185,7 +186,7 @@
                         color: parameters.color.momentum,
                         linewidth: 1
             })
-            momentumGeo.vertices.push(node.atom.position)
+            momentumGeo.vertices.push(node.position.clone())
             momentumGeo.vertices.push(node.getMomentum())
             var momentumLine = new THREE.LineSegments(momentumGeo, lineMaterial);
             momentumLine.name = "atom:" + node.aid;
@@ -204,13 +205,13 @@
                         linewidth: parameters.bondwidth
                     })
 
-                    var bondPos = getBondPosition(edge.atom1, edge.atom2)
+                    var bondPos = getBondPosition(edge.node1, edge.node2)
 
                     lineGeo.vertices.push(bondPos.p1)
                     lineGeo.vertices.push(bondPos.p2)
                     var line = new THREE.LineSegments(lineGeo, lineMaterial);
 
-                    line.name = "line:" + edge.atom1.aid + ":" + edge.atom2.aid
+                    line.name = "line:" + edge.node1.aid + ":" + edge.node2.aid
                     line._class = "bond"
                     line.visible = true
                     line.opacity = 1
@@ -449,6 +450,7 @@
 
    // handle which one is selected here
     function onDocumentMouseMove(event) {
+        if(enableMouseSelection){
         event.preventDefault();
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -488,6 +490,7 @@
             container.style.cursor = 'auto';
             document.getElementById('atomName').innerText = ""
             document.getElementById('selectEnergy').innerText = ""
+        }
         }
     }
 
@@ -580,15 +583,14 @@
                 var id = ids[1]
                 var node = system.getNode(id)
 
-                if(options.displayOption == "position"){
+              if(options.displayOption == "position" && !SELECTED){
                     obj.position.x = node.position.x
                     obj.position.y = node.position.y
                     obj.position.z = node.position.z
                     obj.material.opacity = 1
-                }
+               }
 
-
-              if (options.displayOption == "momentum space") {
+               if (options.displayOption == "momentum space") {
                     obj.position.x = node.velocity.x * node.mass
                  	obj.position.y = node.velocity.y * node.mass
                     obj.position.z = node.velocity.z * node.mass
@@ -596,7 +598,9 @@
                }
 
                if (options.displayOption == "energy space") {
-                    obj.position.z = 0.2 + 0.9 * node.energy / node.maxEnergy
+                    obj.position.x = node.position_.x
+                    obj.position.y = node.position_.y
+                    obj.position.z = (0.2 + 0.9 * node.energy / node.maxEnergy) * settings.unitScale
                }
 
                 // opacity corresponds to energy
@@ -649,11 +653,11 @@
                 obj.visible = true
                 var id = obj.name.split(":")[1]
                 var node = system.getNode(id)
-                    obj.geometry.vertices[0] = node.atom.position
+                    obj.geometry.vertices[0] = node.position
                     obj.geometry.vertices[1] = node.getMomentum()
                                                    .multiplyScalar(
                                                    parameters[options.systemOption].momentumScale)
-                                                   .add(node.atom.position) 
+                                                   .add(node.position) 
                     obj.geometry.verticesNeedUpdate = true
 
             }
@@ -712,11 +716,13 @@
                 system.updateCurrentPositionToOldPositionForAll()
                 rollBackPosition = false
             }
-            if (SELECTED != null && SELECTED._class == "atom") {
-                system.selectID = SELECTED.name.split(':')[1]
-                system.updateOldPositionToCurrentPosition(+system.selectID)
-                system.updateEnergyForAll()
-            } else if (SELECTED == null){
+            enableMouseSelection = true
+        } else {
+            rollBackPosition = true
+            enableMouseSelection = false
+        }
+
+        if (SELECTED == null){
                 // system energy
                 settings.energyHistory.push(system.getEnergy())
                 if (settings.energyHistory.length > settings.maxHistory) { // keep only 500 history
@@ -726,12 +732,17 @@
                 // forces & atom energy
                 system.getForceAcc()
                 system.updateNodes()
-            }
-        } else {
-            rollBackPosition = true
+        } else if (SELECTED != null && SELECTED._class == "atom") {
+                system.selectID = SELECTED.name.split(':')[1]
+                system.copyAtomPositionToNodePosition(+system.selectID)
+                system.updateOldPositionToCurrentPosition(+system.selectID)
+                system.updateEnergyForAll()
+             
         }
+
         drawEnergyHistory();
         updateScene();
+        
 
         // var box = system.getBoundingBox()
 
