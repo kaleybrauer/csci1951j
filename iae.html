@@ -98,7 +98,7 @@
         instruction.style.bottom = '10px';
         instruction.style.textAlign = 'left';
         instruction.style.width = '100%';
-        instruction.innerHTML = 'Open the controls on the top right corner, You can find: <b>position mode</b>, atoms are placed in the physical space; <b>memontum space</b>, atoms are placed in the space according to their current memontum; <b>energy space</b>, atoms are placed in the space according to their current energy. If turn on the checkboxes, the <b>opacity</b> means <b>energy</b> while the <b>small line</b> in the center means <b>memontum</b>. Feel free to <b>zoom</b>, <b>drag</b>, and <b>rotate</b>.';
+        instruction.innerHTML = 'Open the controls on the top right corner, You can find: <b>position mode</b>, atoms are placed in the physical space; <b>momentum space</b>, atoms are placed in the space according to their current momentum; <b>energy space</b>, atoms are placed in the space according to their current energy. If the boxes in the Display Controls are checked, the <b>opacity</b> of each atom corresponds to its <b>energy</b> while the <b>small line</b> in its center corresponds to its <b>momentum</b>. Feel free to <b>zoom</b>, <b>drag</b>, and <b>rotate</b>. To reset the system to its equilibrium position, click Reset System.';
 
         // placing 'on' marker
         var text = document.createElement('div');
@@ -612,8 +612,8 @@
                 }
                
                if(options["momentum as vector"]){
-                if(obj.material.opacity > 0.9)
-                    obj.material.opacity *= 0.9
+                if(obj.material.opacity > 0.7)
+                    obj.material.opacity *= 0.7
                }
                
                 obj.material.needsUpdate = true
