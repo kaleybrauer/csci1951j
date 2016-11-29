@@ -22,6 +22,8 @@
     <script>
     var container;
     var camera, controls, scene, renderer, objects = [];
+    // this "options" variable controls everything
+    // it would be binded to the UI in the function called "setUpOptions"
     var options = {
             timestep: 0.01,
             systemOption: "H2",         // which system we are showing
@@ -52,7 +54,7 @@
    /************************************* init the scene  ******************************/
    /************************************************************************************/
    /************************************************************************************/
-
+   
     function init() {
         settings.maxHistory = window.innerWidth -  165;
         container = document.createElement('div');
@@ -137,7 +139,90 @@
         window.addEventListener('resize', onWindowResize, false);
     }
 
+   
    /************************************************************************************/
+   /************************************************************************************/
+   /*************************** set up the system to show  ***************************/
+   /************************************************************************************/
+   /************************************************************************************/
+   // for an atom (mesh object), we define a couple of attributes that are not provided by the library
+   // they are a. aid, the atom id
+   //          b. moleculeName
+   // for each of the object, _class is defined, 
+   // it could be one of these values: atom, momentum, bond, axis
+   // we use this _class to update the object accordingly
+    function setupSystem() {
+        system = systems[options.systemOption]
+        system.reset()
+        settings.energyHistory = []
+        objects = []
+        
+        scene = new THREE.Scene();
+        scene.add(new THREE.AmbientLight(0x505050));
+
+        var light = new THREE.SpotLight(0xffffff, 1.5);
+        light.position.set(0, 500, 2000);
+        scene.add(light);
+        
+        if(options.axes){
+            addAxes();
+            addAxesText();
+        }
+
+        var atomList = system.getNodeList();
+
+        // go through the list and add each node (atom) to the scene
+        atomList.forEach(function(node) {
+            node.atom.name = "atom:" + node.aid;
+            node.atom.moleculeName = node.name
+            node.atom.aid = node.aid
+            node.atom._class = "atom"
+            scene.add(node.atom)
+            objects.push(node.atom)
+
+            // add the vector to show momentum but make it invisible
+            var momentumGeo =  new THREE.Geometry()
+            var lineMaterial =  new THREE.LineBasicMaterial({
+                        color: parameters.color.momentum,
+                        linewidth: 1
+            })
+            momentumGeo.vertices.push(node.atom.position)
+            momentumGeo.vertices.push(node.getMomentum())
+            var momentumLine = new THREE.LineSegments(momentumGeo, lineMaterial);
+            momentumLine.name = "atom:" + node.aid;
+            momentumLine.visible = false
+            momentumLine._class = "momentum"
+
+            scene.add(momentumLine)
+
+            // add the bond 
+            node.edges.forEach(function(edge) {
+                // set up the bond
+                if (edge.getVisited() == false) {
+                    var lineGeo = new THREE.Geometry()
+                    var lineMaterial = new THREE.LineBasicMaterial({
+                        color: parameters.color.bond,
+                        linewidth: parameters.bondwidth
+                    })
+
+                    var bondPos = getBondPosition(edge.atom1, edge.atom2)
+
+                    lineGeo.vertices.push(bondPos.p1)
+                    lineGeo.vertices.push(bondPos.p2)
+                    var line = new THREE.LineSegments(lineGeo, lineMaterial);
+
+                    line.name = "line:" + edge.atom1.aid + ":" + edge.atom2.aid
+                    line._class = "bond"
+                    line.visible = true
+                    line.opacity = 1
+
+                    scene.add(line)
+                    edge.setVisited()
+                }
+            })
+        })
+    }
+    /************************************************************************************/
    /************************************************************************************/
    /***************************** draw the labels on the axes  *************************/
    /************************************************************************************/
@@ -299,83 +384,6 @@
         scene.add(yAxis)
         scene.add(zAxis)
     }
-   /************************************************************************************/
-   /************************************************************************************/
-   /*************************** set up the system to show  ***************************/
-   /************************************************************************************/
-   /************************************************************************************/
-    function setupSystem() {
-        system = systems[options.systemOption]
-        system.reset()
-        settings.energyHistory = []
-        objects = []
-        
-        scene = new THREE.Scene();
-        scene.add(new THREE.AmbientLight(0x505050));
-
-        var light = new THREE.SpotLight(0xffffff, 1.5);
-        light.position.set(0, 500, 2000);
-        scene.add(light);
-        
-        if(options.axes){
-            addAxes();
-            addAxesText();
-        }
-
-        var atomList = system.getNodeList();
-
-        // go through the list and add each node (atom) to the scene
-        atomList.forEach(function(node) {
-            node.atom.name = "atom:" + node.aid;
-            node.atom.moleculeName = node.name
-            node.atom.aid = node.aid
-            node.atom._class = "atom"
-            scene.add(node.atom)
-            objects.push(node.atom)
-
-            // add the vector to show momentum but make it invisible
-            var momentumGeo =  new THREE.Geometry()
-            var lineMaterial =  new THREE.LineBasicMaterial({
-                        color: parameters.color.momentum,
-                        linewidth: 1
-            })
-            momentumGeo.vertices.push(node.atom.position)
-            momentumGeo.vertices.push(node.getMomentum())
-            var momentumLine = new THREE.LineSegments(momentumGeo, lineMaterial);
-            momentumLine.name = "atom:" + node.aid;
-            momentumLine.visible = false
-            momentumLine._class = "momentum"
-
-            scene.add(momentumLine)
-
-            // add the bond 
-            node.edges.forEach(function(edge) {
-                // set up the bond
-                if (edge.getVisited() == false) {
-                    var lineGeo = new THREE.Geometry()
-                    var lineMaterial = new THREE.LineBasicMaterial({
-                        color: parameters.color.bond,
-                        linewidth: parameters.bondwidth
-                    })
-
-                    var bondPos = getBondPosition(edge.atom1, edge.atom2)
-
-                    lineGeo.vertices.push(bondPos.p1)
-                    lineGeo.vertices.push(bondPos.p2)
-                    var line = new THREE.LineSegments(lineGeo, lineMaterial);
-
-                    line.name = "line:" + edge.atom1.aid + ":" + edge.atom2.aid
-                    line._class = "bond"
-                    line.visible = true
-                    line.opacity = 1
-
-                    scene.add(line)
-                    edge.setVisited()
-                }
-            })
-        })
-    }
-
    /************************************************************************************/
    /************************************************************************************/
    /************************** called when changing options  ***************************/
@@ -612,7 +620,7 @@
                 obj.material.transparent = true
             }
 
-            // if this is a bond (line segments + not named as momentum)
+            // if this is a bond
             if (obj._class == "bond") {
                 var ids = obj.name.split(":")
                 var aid1 = ids[1],
@@ -633,11 +641,11 @@
                 obj.material.transparent = true
             }
             
-            // console.log
+            // if this the vector of memontum
             if(options.displayOption != "momentum space" && obj._class == "momentum"){
                 obj.visible = false
             }
-
+            // if this the vector of memontum
             if(options["momentum as vector"] == true && obj._class == "momentum"){
                 obj.visible = true
                 var id = obj.name.split(":")[1]
