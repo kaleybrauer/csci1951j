@@ -250,26 +250,8 @@ Node.prototype.getAtomEnergy = function() {
     return energy
 }
 
-Node.prototype.getMomentumX = function() {
+Node.prototype.getMomentum = function() {
     var velocityTmp = this.velocity.clone()
-    velocityTmp.y = 0
-    velocityTmp.z = 0
-    velocityTmp.multiplyScalar(this.mass)
-    return velocityTmp
-}
-
-Node.prototype.getMomentumY = function() {
-    var velocityTmp = this.velocity.clone()
-    velocityTmp.x = 0
-    velocityTmp.z = 0
-    velocityTmp.multiplyScalar(this.mass)
-    return velocityTmp
-}
-
-Node.prototype.getMomentumZ = function() {
-    var velocityTmp = this.velocity.clone()
-    velocityTmp.x = 0
-    velocityTmp.y = 0
     velocityTmp.multiplyScalar(this.mass)
     return velocityTmp
 }
@@ -428,11 +410,14 @@ parameters = {
         "H": 0.25,
         "O": 0.60
     },
+    // these colors are consistent with ASE system
+    // may need to swicth back if we don't do any tricks on hue
     "color": {
         "H": 'hsl(180, 100%, 25%)',
         "O": 'hsl(180, 100%, 100%)',
         "bond": 'hsl(7,0%,48%)',
-        "momentum": 'hsl(7,0%,48%)'
+        "momentum": 'hsl(7,0%,48%)',
+        "selected" : 0x754200
     },
     "hsl":{
         "H": {'h':'180', 's':'100%', 'l':'25%'},
@@ -440,7 +425,7 @@ parameters = {
         "bond": {'h':'7', 's':'0%', 'l':'48%'},
         "momentum": {'h':'7', 's':'0%', 'l':'48%'},
     },
-    "bondwidth": 10
+    "bondwidth": 30
 
 }
 
