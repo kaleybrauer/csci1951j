@@ -20,14 +20,16 @@
     <script src='js/libs/stats.min.js'></script>
     <script src="network.js"></script>
     <script>
-    var container;
-    var camera, controls, scene, renderer, objects = [];
+    var container,camera, controls, scene, renderer, objects = [];
+    // this "options" variable controls everything
+    // it would be binded to the UI in the function called "setUpOptions"
     var options = {
-            timestep: 0.05,
+            timestep: 0.01,
             systemOption: "H2",         // which system we are showing
             displayOption: "position",  // which display we are showing (in this case, position space)
             "energy as opacity": false, // whether or not the energy is encoded in the opacity
-            "momentum as vector": false
+            "momentum as vector": false,
+            axes: true
         };
     var energyVal = 0;
     var plane = new THREE.Plane();
@@ -40,6 +42,7 @@
     var system = systems[options.systemOption]
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
+    var rollBackPosition = false
     context.fillStyle = 'rgba(127, 127, 127, 0.3)';
 
     init();
@@ -50,15 +53,16 @@
    /************************************* init the scene  ******************************/
    /************************************************************************************/
    /************************************************************************************/
-
+   
     function init() {
+        settings.maxHistory = window.innerWidth -  165;
         container = document.createElement('div');
         document.body.appendChild(container);
         // using orthographic camera
-        camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, - 500, 1000 );
-        camera.position.x = 0;
-        camera.position.y = 0;
-        camera.position.z = 500;
+        camera = new THREE.OrthographicCamera( window.innerWidth / -2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / -2, -10000, 10000);
+        camera.position.x = 300;
+        camera.position.y = 300;
+        camera.position.z = 300;
 
         setupSystem();
 
@@ -83,31 +87,38 @@
         // placing energy marker
         var energy = document.createElement('div');
         energy.style.position = 'absolute';
-        energy.style.bottom = '10px';
+        energy.style.bottom = '85px';
         energy.style.textAlign = 'left';
         energy.style.width = '100%';
         energy.innerHTML = 'Energy (J): <span id="energyVal" ></span>';
 
+        var instruction = document.createElement('div');
+        instruction.style.position = 'absolute';
+        instruction.style.bottom = '10px';
+        instruction.style.textAlign = 'left';
+        instruction.style.width = '100%';
+        instruction.innerHTML = 'Open the controls on the top right corner, you can find: <b>position mode</b>, atoms are placed in the physical space; <b>momentum space</b>, atoms are placed in the space according to their current momentum; <b>energy space</b>, atoms are placed in the space according to their current energy. If the boxes in the Display Controls are checked, the <b>opacity</b> of each atom corresponds to its <b>energy</b> while the <b>small line</b> in its center corresponds to its <b>momentum</b>. Feel free to <b>zoom</b>, <b>drag</b>, and <b>rotate</b>. To reset the system to its equilibrium position, click Reset System.';
+
         // placing 'on' marker
         var text = document.createElement('div');
         text.style.position = 'absolute';
-        text.style.bottom = '30px';
+        text.style.bottom = '65px';
         text.style.textAlign = 'left';
         text.style.width = '100%';
-        text.innerHTML = 'On: <span id="moleculeName" ></span>';
+        text.innerHTML = 'Mouse is on: <span id="atomName" ></span>, its energy is <span id="selectEnergy" ></span>';
 
         canvas.width = settings.maxHistory;
         canvas.height = settings.maxHistory / 40;
         canvas.style.position = 'absolute';
-        canvas.style.bottom = "15px";
+        canvas.style.bottom = "90px";
         canvas.style.left = '150px';
         canvas.style.right = '10px';
-        canvas.style.width = '100%';
 
         container.appendChild(title);
         container.appendChild(energy);
         container.appendChild(text);
         container.appendChild(canvas);
+        container.appendChild(instruction);
 
         setupOptions();
 
@@ -116,8 +127,8 @@
         renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
 
         controls = new THREE.TrackballControls(camera, renderer.domElement);
-        controls.rotateSpeed = 7.0;
-        controls.zoomSpeed = 1.2;
+        controls.rotateSpeed = 5.0;
+        controls.zoomSpeed = 1.01;
         controls.panSpeed = 0.8;
         controls.noZoom = false;
         controls.noPan = false;
@@ -127,13 +138,21 @@
         window.addEventListener('resize', onWindowResize, false);
     }
 
+   
    /************************************************************************************/
    /************************************************************************************/
    /*************************** set up the system to show  ***************************/
    /************************************************************************************/
    /************************************************************************************/
+   // for an atom (mesh object), we define a couple of attributes that are not provided by the library
+   // they are a. aid, the atom id
+   //          b. atomName
+   // for each of the object, _class is defined, 
+   // it could be one of these values: atom, momentum, bond, axis
+   // we use this _class to update the object accordingly
     function setupSystem() {
         system = systems[options.systemOption]
+        system.reset()
         settings.energyHistory = []
         objects = []
         
@@ -143,14 +162,21 @@
         var light = new THREE.SpotLight(0xffffff, 1.5);
         light.position.set(0, 500, 2000);
         scene.add(light);
+        
+        if(options.axes){
+            addAxes();
+            addAxesText();
+        }
 
         var atomList = system.getNodeList();
 
         // go through the list and add each node (atom) to the scene
         atomList.forEach(function(node) {
             node.atom.name = "atom:" + node.aid;
-            node.atom.moleculeName = node.name
-            scene.add(node.atom);
+            node.atom.atomName = node.name
+            node.atom.aid = node.aid
+            node.atom._class = "atom"
+            scene.add(node.atom)
             objects.push(node.atom)
 
             // add the vector to show momentum but make it invisible
@@ -162,8 +188,9 @@
             momentumGeo.vertices.push(node.atom.position)
             momentumGeo.vertices.push(node.getMomentum())
             var momentumLine = new THREE.LineSegments(momentumGeo, lineMaterial);
-            momentumLine.name = "momentum";
+            momentumLine.name = "atom:" + node.aid;
             momentumLine.visible = false
+            momentumLine._class = "momentum"
 
             scene.add(momentumLine)
 
@@ -177,11 +204,16 @@
                         linewidth: parameters.bondwidth
                     })
 
-                    lineGeo.vertices.push(edge.atom1.position)
-                    lineGeo.vertices.push(edge.atom2.position)
+                    var bondPos = getBondPosition(edge.atom1, edge.atom2)
+
+                    lineGeo.vertices.push(bondPos.p1)
+                    lineGeo.vertices.push(bondPos.p2)
                     var line = new THREE.LineSegments(lineGeo, lineMaterial);
 
                     line.name = "line:" + edge.atom1.aid + ":" + edge.atom2.aid
+                    line._class = "bond"
+                    line.visible = true
+                    line.opacity = 1
 
                     scene.add(line)
                     edge.setVisited()
@@ -189,7 +221,168 @@
             })
         })
     }
+    /************************************************************************************/
+   /************************************************************************************/
+   /***************************** draw the labels on the axes  *************************/
+   /************************************************************************************/
+   /************************************************************************************/
 
+    // notice: I draw the x, y, z letters using just lines
+    // which I feel it is not the best way
+    // there is a long long long code to do this by loading fonts at
+    // https://threejs.org/docs/index.html?q=text#Reference/Geometries/TextGeometry
+    // I gave up because we are short on time
+    // for the future work, this is a place to improve
+    function addAxesText(){
+        // draw x
+        var xGeo1 =  new THREE.Geometry()
+        var lineX1 =  new THREE.LineBasicMaterial({
+            color: parameters.color.axis,
+            linewidth: 1
+        })
+        xGeo1.vertices.push(new THREE.Vector3(settings.unitScale - 10, 20, 0))
+        xGeo1.vertices.push(new THREE.Vector3(settings.unitScale, 10, 0))
+        var x1 = new THREE.LineSegments(xGeo1, lineX1);
+        x1.name = "x1";
+        x1._class = "axis";
+
+        var xGeo2 =  new THREE.Geometry()
+        var lineX2 =  new THREE.LineBasicMaterial({
+            color: parameters.color.axis,
+            linewidth: 1
+        })
+        xGeo2.vertices.push(new THREE.Vector3(settings.unitScale - 10, 10, 0))
+        xGeo2.vertices.push(new THREE.Vector3(settings.unitScale, 20, 0, 0))
+        var x2 = new THREE.LineSegments(xGeo2, lineX2);
+        x2.name = "x2";
+        x2._class = "axis";
+
+        scene.add(x1)
+        scene.add(x2)
+
+        // draw y
+        var yGeo1 =  new THREE.Geometry()
+        var lineY1 =  new THREE.LineBasicMaterial({
+            color: parameters.color.axis,
+            linewidth: 1
+        })
+        yGeo1.vertices.push(new THREE.Vector3(10, settings.unitScale, 0))
+        yGeo1.vertices.push(new THREE.Vector3(15, settings.unitScale - 5, 0))
+        var y1 = new THREE.LineSegments(yGeo1, lineY1);
+        y1.name = "y1";
+        y1._class = "axis";
+
+        var yGeo2 =  new THREE.Geometry()
+        var lineY2 =  new THREE.LineBasicMaterial({
+            color: parameters.color.axis,
+            linewidth: 1
+        })
+        yGeo2.vertices.push(new THREE.Vector3(20, settings.unitScale, 0))
+        yGeo2.vertices.push(new THREE.Vector3(15, settings.unitScale - 5, 0))
+        var y2 = new THREE.LineSegments(yGeo2, lineY2);
+        y2.name = "y2";
+        y2._class = "axis";
+
+        var yGeo3 =  new THREE.Geometry()
+        var lineY3 =  new THREE.LineBasicMaterial({
+            color: parameters.color.axis,
+            linewidth: 1
+        })
+        yGeo3.vertices.push(new THREE.Vector3(15, settings.unitScale - 5, 0))
+        yGeo3.vertices.push(new THREE.Vector3(15, settings.unitScale - 15, 0))
+        var y3 = new THREE.LineSegments(yGeo3, lineY3);
+        y3.name = "y3";
+        y3._class = "axis";
+
+        scene.add(y1)
+        scene.add(y2)
+        scene.add(y3)
+
+
+         // draw z
+        var zGeo1 =  new THREE.Geometry()
+        var lineZ1 =  new THREE.LineBasicMaterial({
+            color: parameters.color.axis,
+            linewidth: 1
+        })
+
+        zGeo1.vertices.push(new THREE.Vector3(0, 10, settings.unitScale))
+        zGeo1.vertices.push(new THREE.Vector3(0, 10, settings.unitScale - 10))
+        var z1 = new THREE.LineSegments(zGeo1, lineZ1);
+        z1.name = "z1";
+        z1._class = "axis";
+
+        var zGeo2 =  new THREE.Geometry()
+        var lineZ2 =  new THREE.LineBasicMaterial({
+            color: parameters.color.axis,
+            linewidth: 1
+        })
+        zGeo2.vertices.push(new THREE.Vector3(0, 20, settings.unitScale))
+        zGeo2.vertices.push(new THREE.Vector3(0, 20, settings.unitScale - 10))
+        var z2 = new THREE.LineSegments(zGeo2, lineZ2);
+        z2.name = "z2";
+        z2._class = "axis";
+
+        var zGeo3 =  new THREE.Geometry()
+        var lineZ3 =  new THREE.LineBasicMaterial({
+            color: parameters.color.axis,
+            linewidth: 1
+        })
+        zGeo3.vertices.push(new THREE.Vector3(0, 10, settings.unitScale))
+        zGeo3.vertices.push(new THREE.Vector3(0, 20, settings.unitScale - 10))
+        var z3 = new THREE.LineSegments(zGeo3, lineZ3);
+        z3.name = "z3";
+        z3._class = "axis";
+
+        scene.add(z1)
+        scene.add(z2)
+        scene.add(z3)
+    }
+
+   /************************************************************************************/
+   /************************************************************************************/
+   /************************************ draw axes  ************************************/
+   /************************************************************************************/
+   /************************************************************************************/
+
+    function addAxes(){
+        var xAxisGeo =  new THREE.Geometry()
+        var lineX=  new THREE.LineBasicMaterial({
+            color: parameters.color.axis,
+            linewidth: 1
+        })
+        xAxisGeo.vertices.push(new THREE.Vector3(0, 0, 0))
+        xAxisGeo.vertices.push(new THREE.Vector3(settings.unitScale, 0, 0))
+        var xAxis = new THREE.LineSegments(xAxisGeo, lineX);
+        xAxis.name = "x";
+        xAxis._class = "axis";
+
+        var yAxisGeo =  new THREE.Geometry()
+        var lineY=  new THREE.LineBasicMaterial({
+            color: parameters.color.axis,
+            linewidth: 1
+        })
+        yAxisGeo.vertices.push(new THREE.Vector3(0, 0, 0))
+        yAxisGeo.vertices.push(new THREE.Vector3(0, settings.unitScale, 0))
+        var yAxis = new THREE.LineSegments(yAxisGeo, lineY);
+        yAxis.name = "y";
+        yAxis._class = "axis"
+
+        var zAxisGeo =  new THREE.Geometry()
+        var lineZ=  new THREE.LineBasicMaterial({
+            color: parameters.color.axis,
+            linewidth: 1
+        })
+        zAxisGeo.vertices.push(new THREE.Vector3(0, 0, 0))
+        zAxisGeo.vertices.push(new THREE.Vector3(0, 0, settings.unitScale))
+        var zAxis = new THREE.LineSegments(zAxisGeo, lineZ);
+        zAxis.name = "z";
+        zAxis._class = "axis"
+
+        scene.add(xAxis)
+        scene.add(yAxis)
+        scene.add(zAxis)
+    }
    /************************************************************************************/
    /************************************************************************************/
    /************************** called when changing options  ***************************/
@@ -202,7 +395,7 @@
 
         // simulation controls
         folder = gui.addFolder("Simulation Controls");
-        folder.add(options, "timestep", 0.01, 2.0, 0.01).name("Timestep (s)").onChange(render);
+        folder.add(options, "timestep", 0.05, 2.0, 0.01).name("Timestep (s)").onChange(render);
 
         // display controls
         folder = gui.addFolder("Display");
@@ -215,6 +408,7 @@
         // bind the menu to options["energy as opacity"] and options["momentum as vector"]
         folder.add(options, "energy as opacity").onChange(render);
         folder.add(options, "momentum as vector").onChange(render);
+        folder.add(options, "axes").onChange(render);
 
         // setup system
         folder = gui.addFolder("Setup System");
@@ -244,7 +438,6 @@
     function onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-        camera.updateViewMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
@@ -280,7 +473,7 @@
             }
             container.style.cursor = 'pointer';
 
-            document.getElementById('moleculeName').innerText = INTERSECTED.moleculeName
+            document.getElementById('atomName').innerText = INTERSECTED.atomName
 
             var ids = INTERSECTED.name.split(":")
             var id = ids[1]
@@ -288,11 +481,13 @@
             node.setPosition(INTERSECTED.position)
 
         } else {
-            if (INTERSECTED)
+            if (INTERSECTED){
                 INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
+            }
             INTERSECTED = null;
             container.style.cursor = 'auto';
-            document.getElementById('moleculeName').innerText = ""
+            document.getElementById('atomName').innerText = ""
+            document.getElementById('selectEnergy').innerText = ""
         }
     }
 
@@ -341,7 +536,28 @@
         setTimeout(function() {
             requestAnimationFrame(animate);
             render();
-        }, 1000 / 25); // decrease the frame rate to 1000 / 25
+        }, 1000 / 25); // decrease the frame rate to 25 fps
+    }
+
+   /************************************************************************************/
+   /************************************************************************************/
+   /************************ get the two coordinates of the bond  **********************/
+   /************************************************************************************/
+   /************************************************************************************/
+
+    function getBondPosition(atom1, atom2){
+        var pos1Copy1 = atom1.position.clone(),
+            pos2Copy1 = atom2.position.clone(),
+            dir = pos1Copy1.sub(pos2Copy1).normalize(),
+            dirCopy = dir.clone(),
+            size1 = atom1.radius,
+            size2 = atom2.radius,
+            pos1Copy2 = atom1.position.clone(),
+            pos2Copy2 = atom2.position.clone(),
+            pos1Final = pos1Copy2.sub(dir.multiplyScalar(size1)),
+            pos2Final = pos2Copy2.add(dirCopy.multiplyScalar(size2))
+
+        return {"p1" : pos1Final, "p2" : pos2Final}
     }
 
    /************************************************************************************/
@@ -354,9 +570,12 @@
         var objects = scene.children
 
         objects.forEach(function(obj) {
+            if(obj._class == "axis"){
+                obj.visible = options.axes
+            }
 
             // if this is a node (atom)
-            if (obj.type == "Mesh") {
+            if (obj._class == "atom") {
                 var ids = obj.name.split(":")
                 var id = ids[1]
                 var node = system.getNode(id)
@@ -366,40 +585,25 @@
                     obj.position.y = node.position.y
                     obj.position.z = node.position.z
                     obj.material.opacity = 1
-                    obj.material.needsUpdate = true
                 }
-    
-                // if (options.displayOption == "momentum space") {
-                //      obj.material.opacity = 0.5
-                //      obj.material.needsUpdate = true
-                //      obj.material.transparent = true
-                // }
+
 
               if (options.displayOption == "momentum space") {
                     obj.position.x = node.velocity.x * node.mass
                  	obj.position.y = node.velocity.y * node.mass
                     obj.position.z = node.velocity.z * node.mass
+                    obj.material.opacity = 1
+               }
+
+               if (options.displayOption == "energy space") {
+                    obj.position.z = 0.2 + 0.9 * node.energy / node.maxEnergy
                }
 
                 // opacity corresponds to energy
                 // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
-                if (options.displayOption == "energy space") {
+                if (options["energy as opacity"] == true) {
                     if (node.maxEnergy != 0) {
-                        // if choose opacity
-                        // obj.material.opacity = 0.2 + 0.9 * node.energy / node.maxEnergy
-<<<<<<< HEAD
-                        // obj.material.transparent = true
-                       
-                        var mappingValue = 0.1 + 0.9 * node.energy / node.maxEnergy
-                        var target = Math.round(mappingValue * 100) + "%"
-                        var curHSL = parameters.hsl
-
-                        var updateHSL = "hsl(" + curHSL[obj.moleculeName].h + "," + target + "," + curHSL[obj.moleculeName].l + ")"
-                        obj.material.color.set(updateHSL)
-                        obj.opacity = 1
-=======
-                        obj.position.z = 0.2 + 0.9 * node.energy / node.maxEnergy
->>>>>>> 2556138c818833ffa226cff5513dcacb2f1c8d79
+                        obj.material.opacity = 0.2 + 0.9 * node.energy / node.maxEnergy
                     }
                     if (node.maxEnergy == 0) {
                         obj.material.opacity = 1
@@ -407,17 +611,16 @@
                 }
                
                if(options["momentum as vector"]){
-                    obj.material.opacity *= 0.9
+                if(obj.material.opacity > 0.7)
+                    obj.material.opacity *= 0.7
                }
                
                 obj.material.needsUpdate = true
                 obj.material.transparent = true
-
             }
 
-
-            // if this is a bond (line segments + not named as momentum)
-            if (obj.type == "LineSegments" && obj.name != "momentum" ) {
+            // if this is a bond
+            if (obj._class == "bond") {
                 var ids = obj.name.split(":")
                 var aid1 = ids[1],
                     aid2 = ids[2]
@@ -426,9 +629,9 @@
                 var p1 = atom1.position,
                     p2 = atom2.position
                 var dist = p1.distanceTo(p2)
-
-                obj.geometry.vertices[0] = p1.clone()
-                obj.geometry.vertices[1] = p2.clone()
+                var bondPos = getBondPosition(atom1, atom2)
+                obj.geometry.vertices[0] = bondPos.p1
+                obj.geometry.vertices[1] = bondPos.p2
 
                 obj.geometry.verticesNeedUpdate = true
 
@@ -436,47 +639,36 @@
                 obj.material.needsUpdate = true
                 obj.material.transparent = true
             }
-            // console.log
-            if(options.displayOption != "momentum space" && obj.name == "momentum"){
+            
+            // if this the vector of memontum
+            if(options.displayOption != "momentum space" && obj._class == "momentum"){
                 obj.visible = false
             }
-            if(options.displayOption == "momentum space" && obj.name == "momentum"){
+            // if this the vector of memontum
+            if(options["momentum as vector"] == true && obj._class == "momentum"){
                 obj.visible = true
                 var id = obj.name.split(":")[1]
-                var axis = obj.name.split(":")[2]
-                if(axis == 'x'){
-                    var node = system.getNode(id)
+                var node = system.getNode(id)
                     obj.geometry.vertices[0] = node.atom.position
-                    obj.geometry.vertices[1] = node.getMomentumX()
-                                                   .multiplyScalar(parameters[options.systemOption].momentumScale)
+                    obj.geometry.vertices[1] = node.getMomentum()
+                                                   .multiplyScalar(
+                                                   parameters[options.systemOption].momentumScale)
                                                    .add(node.atom.position) 
                     obj.geometry.verticesNeedUpdate = true
-               }
-               if(axis == 'y'){
-                    var node = system.getNode(id)
-                    obj.geometry.vertices[0] = node.atom.position
-                    obj.geometry.vertices[1] = node.getMomentumY()
-                                                   .multiplyScalar(parameters[options.systemOption].momentumScale)
-                                                   .add(node.atom.position) 
-                    obj.geometry.verticesNeedUpdate = true
-               }
-               if(axis == 'z'){
-                    var node = system.getNode(id)
-                    obj.geometry.vertices[0] = node.atom.position
-                    obj.geometry.vertices[1] = node.getMomentumZ()
-                                                   .multiplyScalar(parameters[options.systemOption].momentumScale)
-                                                   .add(node.atom.position) 
-                    obj.geometry.verticesNeedUpdate = true
-               }
+
             }
         })
     }
 
-
+   /************************************************************************************/
+   /************************************************************************************/
+   /************* draw the historical energy as a canvas at the bottom  ****************/
+   /************************************************************************************/
+   /************************************************************************************/
 
     function drawEnergyHistory(){
         context.clearRect(0, 0, canvas.width, canvas.height);
-        var maxEnergy = Math.max.apply(null, settings.energyHistory) // 4
+        var maxEnergy = Math.max.apply(null, settings.energyHistory)
 
         if (settings.energyHistory > 0)
             context.moveTo(0, canvas.height - canvas.height * settings.energyHistory[i] / maxEnergy);
@@ -489,6 +681,7 @@
         for (var i = 0; i < settings.energyHistory.length; i++) {
             x = i;
             if (maxEnergy == 0) {
+                // push down a little bit to avoid cutting tops and bottoms
                 y = canvas.height - 1
             } else {
                 y = canvas.height - 1 - (canvas.height - 2) * settings.energyHistory[i] / maxEnergy
@@ -505,33 +698,58 @@
    /************************************************************************************/
 
     function render() {
-        drawEnergyHistory();
-
-        settings.timeStep = options.timestep
-
-        updateScene()
         controls.update();
         // only update forces and energies if an atom is not currently clicked on
-        if (SELECTED != null) {
-            system.selectID = SELECTED.name.split(':')[1]
-            system.moveAtom(+system.selectID)
-            system.setMaxEnergies()
-        } else {
-            // system energy
-            settings.energyHistory.push(system.getEnergy())
-            if (settings.energyHistory.length > settings.maxHistory) { // keep only 500 history
-                settings.energyHistory.shift()
-            }
-            document.getElementById('energyVal').innerText = parseFloat(system.getEnergy()).toFixed(4);
-            // forces & atom energy
-            system.getForceAcc()
-            system.updateNodes()
+        settings.timeStep = options.timestep
+        
+        if(INTERSECTED){
+            document.getElementById('selectEnergy').innerText 
+            = system.getNode(+INTERSECTED.aid).energy.toFixed(4)
         }
-        // console.log( camera.position)
-         // camera.position.z -= 1
-        var center = system.getCenter()
-        // camera.position.x = center.x
-        // camera.position.y = center.y
+
+        if(options.displayOption == "position"){
+            if(rollBackPosition == true){
+                system.updateCurrentPositionToOldPositionForAll()
+                rollBackPosition = false
+            }
+            if (SELECTED != null && SELECTED._class == "atom") {
+                system.selectID = SELECTED.name.split(':')[1]
+                system.updateOldPositionToCurrentPosition(+system.selectID)
+                system.updateEnergyForAll()
+            } else if (SELECTED == null){
+                // system energy
+                settings.energyHistory.push(system.getEnergy())
+                if (settings.energyHistory.length > settings.maxHistory) { // keep only 500 history
+                    settings.energyHistory.shift()
+                }
+                document.getElementById('energyVal').innerText = parseFloat(system.getEnergy()).toFixed(4);
+                // forces & atom energy
+                system.getForceAcc()
+                system.updateNodes()
+            }
+        } else {
+            rollBackPosition = true
+        }
+        drawEnergyHistory();
+        updateScene();
+
+        // var box = system.getBoundingBox()
+
+        // console.log(box)
+        // if(box.x1 < -innerWidth / 2.0 || box.x2 > innerWidth / 2.0 ||
+        //    box.y1 < -innerHeight / 2.0 || box.y2 > innerHeight / 2.0 ){
+        //      camera = new THREE.OrthographicCamera( box.x1, 
+        //                                             box.x2, 
+        //                                             box.y2, 
+        //                                             box.y1, -500, 1000 );
+        //      camera.position.x = (box.x1 + box.x2) / 2.0;
+        //      camera.position.y = (box.y1 + box.y2) / 2.0;
+        //      camera.position.z = 800;
+        //      camera.aspect = (box.x1 + box.x2) / (box.y1 + box.y2);
+        //      renderer.setSize((box.x2 - box.x1), (box.y2 - box.y1));
+        //      camera.updateProjectionMatrix()
+        // }
+        
         renderer.render(scene, camera);
     }
     </script>
