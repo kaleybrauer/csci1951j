@@ -98,7 +98,7 @@
         instruction.style.bottom = '10px';
         instruction.style.textAlign = 'left';
         instruction.style.width = '100%';
-        instruction.innerHTML = 'Open the controls on the top right corner, You can find: <b>position mode</b>, atoms are placed in the physical space; <b>momentum space</b>, atoms are placed in the space according to their current momentum; <b>energy space</b>, atoms are placed in the space according to their current energy. If the boxes in the Display Controls are checked, the <b>opacity</b> of each atom corresponds to its <b>energy</b> while the <b>small line</b> in its center corresponds to its <b>momentum</b>. Feel free to <b>zoom</b>, <b>drag</b>, and <b>rotate</b>. To reset the system to its equilibrium position, click <b>Reset System</b>.';
+        instruction.innerHTML = 'Open the controls on the top right corner, you can find: <b>position mode</b>, atoms are placed in the physical space; <b>momentum space</b>, atoms are placed in the space according to their current momentum; <b>energy space</b>, atoms are placed in the space according to their current energy. If the boxes in the Display Controls are checked, the <b>opacity</b> of each atom corresponds to its <b>energy</b> while the <b>small line</b> in its center corresponds to its <b>momentum</b>. Feel free to <b>zoom</b>, <b>drag</b>, and <b>rotate</b>. To reset the system to its equilibrium position, click <b>Reset System</b>.';
 
         // placing 'on' marker
         var text = document.createElement('div');
@@ -148,7 +148,7 @@
    // for an atom (mesh object), we define a couple of attributes that are not provided by the library
    // they are a. aid, the atom id
    //          b. atomName
-   // for each of the object, _class is defined, 
+   // for each of the objects, _class is defined, 
    // it could be one of these values: atom, momentum, bond, axis
    // we use this _class to update the object accordingly
     function setupSystem() {
@@ -176,15 +176,17 @@
             node.atom.name = "atom:" + node.aid;
             node.atom.atomName = node.name
             node.atom.aid = node.aid
+            node.atom.radius = node.radius // ?????
             node.atom._class = "atom"
+
             scene.add(node.atom)
             objects.push(node.atom)
 
             // add the vector to show momentum but make it invisible
             var momentumGeo =  new THREE.Geometry()
             var lineMaterial =  new THREE.LineBasicMaterial({
-                        color: parameters.color.momentum,
-                        linewidth: 1
+                color: parameters.color.momentum,
+                linewidth: 1
             })
             momentumGeo.vertices.push(node.position.clone())
             momentumGeo.vertices.push(node.getMomentum())
@@ -559,6 +561,7 @@
             pos2Copy2 = atom2.position.clone(),
             pos1Final = pos1Copy2.sub(dir.multiplyScalar(size1)),
             pos2Final = pos2Copy2.add(dirCopy.multiplyScalar(size2))
+            console.log(size1 + "," + size2)
 
         return {"p1" : pos1Final, "p2" : pos2Final}
     }
