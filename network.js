@@ -79,7 +79,14 @@ Node.prototype.reset = function() {
         })
 }
 
-// 
+Node.prototype.setVisitedEdge = function(node2) {
+    this.edges.forEach(function(e){
+        if(node2.aid == e.node2.aid){
+            e.visited = true
+        }
+    })
+}
+
 Node.prototype.updateForce = function(force) {
     this.force = force
 }
@@ -105,7 +112,6 @@ Node.prototype.updateVelocity = function(t) { // v_i = (x_i - x_{i-1})/timestep
     var c = posCopy.sub(oldposCopy);
     this.velocity = c.divideScalar(t);
 }
-
 
 Node.prototype.updateAcceleration = function() { // acceleration from current force
     var forceCopy = new THREE.Vector3(this.force.x, this.force.y, this.force.z);
@@ -381,7 +387,7 @@ parameters = {
     },
     "O2": {
         "OO": 1.48,
-        "opacityThresholdScale": 2 * settings.unitScale,
+        "opacityThresholdScale": 4 * settings.unitScale,
         "momentumScale": 1
     },
     "mass": {
@@ -397,10 +403,12 @@ parameters = {
     "color": {
         "H": 'hsl(180, 100%, 25%)',
         "O": 'hsl(180, 100%, 100%)',
-        "bond": 'hsl(7,0%,48%)',
+        "bond":{"HH":'hsl(180, 100%, 25%)', "OO":'hsl(180, 100%, 100%)', 
+        "HO": 'hsl(180, 100%, 25%)', "OH": 'hsl(180, 100%, 25%)'},
         "momentum": 'hsl(7,0%,48%)',
         "selected" : 0x754200,
-        "axis" : 0x000000
+        "axis" : 0x333333,
+        "center": 0x888888
     },
     "hsl":{
         "H": {'h':'180', 's':'100%', 'l':'25%'},

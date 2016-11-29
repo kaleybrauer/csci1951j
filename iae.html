@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <style>
     body {
-        background-color: #f0f0f0;
+        background-color: #b0b0b0;
         overflow: hidden;
     }
     </style>
@@ -106,7 +106,7 @@
         text.style.bottom = '65px';
         text.style.textAlign = 'left';
         text.style.width = '100%';
-        text.innerHTML = 'Mouse is on: <span id="atomName" ></span>, its energy is <span id="selectEnergy" ></span>';
+        text.innerHTML = 'Unit = 1:' + settings.unitScale + '. (???) Mouse is on: <span id="atomName" ></span>, its energy is <span id="selectEnergy" ></span>. ';
 
         canvas.width = settings.maxHistory;
         canvas.height = settings.maxHistory / 40;
@@ -173,6 +173,7 @@
 
         // go through the list and add each node (atom) to the scene
         atomList.forEach(function(node) {
+            // add node
             node.atom.name = "atom:" + node.aid;
             node.atom.atomName = node.name
             node.atom.aid = node.aid
@@ -181,6 +182,17 @@
 
             scene.add(node.atom)
             objects.push(node.atom)
+
+            var atomCenterGeo = new THREE.SphereGeometry(2, 100, 100);
+            var atomCenterMaterial = new THREE.MeshLambertMaterial({
+                color: parameters.color.center
+            })
+            var atomCenter = new THREE.Mesh(atomCenterGeo, atomCenterMaterial);
+            atomCenter._class = "atomcenter"
+            atomCenter.position.set(node.position)
+            atomCenter.aid = node.aid
+
+            scene.add(atomCenter)
 
             // add the vector to show momentum but make it invisible
             var momentumGeo =  new THREE.Geometry()
@@ -200,10 +212,10 @@
             // add the bond 
             node.edges.forEach(function(edge) {
                 // set up the bond
-                if (edge.getVisited() == false) {
+                if (edge.visited == false) {
                     var lineGeo = new THREE.Geometry()
                     var lineMaterial = new THREE.LineBasicMaterial({
-                        color: parameters.color.bond,
+                        color: parameters.color.bond[edge.node1.name + edge.node2.name],
                         linewidth: parameters.bondwidth
                     })
 
@@ -219,7 +231,8 @@
                     line.opacity = 1
 
                     scene.add(line)
-                    edge.setVisited()
+                    edge.visited = true
+                    node.setVisitedEdge(edge.node2)
                 }
             })
         })
@@ -239,24 +252,20 @@
     function addAxesText(){
         // draw x
         var xGeo1 =  new THREE.Geometry()
-        var lineX1 =  new THREE.LineBasicMaterial({
+        var mline =  new THREE.LineBasicMaterial({
             color: parameters.color.axis,
             linewidth: 1
         })
         xGeo1.vertices.push(new THREE.Vector3(settings.unitScale - 10, 20, 0))
         xGeo1.vertices.push(new THREE.Vector3(settings.unitScale, 10, 0))
-        var x1 = new THREE.LineSegments(xGeo1, lineX1);
+        var x1 = new THREE.LineSegments(xGeo1, mline);
         x1.name = "x1";
         x1._class = "axisText";
 
         var xGeo2 =  new THREE.Geometry()
-        var lineX2 =  new THREE.LineBasicMaterial({
-            color: parameters.color.axis,
-            linewidth: 1
-        })
         xGeo2.vertices.push(new THREE.Vector3(settings.unitScale - 10, 10, 0))
         xGeo2.vertices.push(new THREE.Vector3(settings.unitScale, 20, 0, 0))
-        var x2 = new THREE.LineSegments(xGeo2, lineX2);
+        var x2 = new THREE.LineSegments(xGeo2, mline);
         x2.name = "x2";
         x2._class = "axisText";
 
@@ -265,24 +274,16 @@
 
         // draw y
         var yGeo1 =  new THREE.Geometry()
-        var lineY1 =  new THREE.LineBasicMaterial({
-            color: parameters.color.axis,
-            linewidth: 1
-        })
         yGeo1.vertices.push(new THREE.Vector3(10, settings.unitScale, 0))
         yGeo1.vertices.push(new THREE.Vector3(15, settings.unitScale - 5, 0))
-        var y1 = new THREE.LineSegments(yGeo1, lineY1);
+        var y1 = new THREE.LineSegments(yGeo1, mline);
         y1.name = "y1";
         y1._class = "axisText";
 
         var yGeo2 =  new THREE.Geometry()
-        var lineY2 =  new THREE.LineBasicMaterial({
-            color: parameters.color.axis,
-            linewidth: 1
-        })
         yGeo2.vertices.push(new THREE.Vector3(20, settings.unitScale, 0))
         yGeo2.vertices.push(new THREE.Vector3(15, settings.unitScale - 5, 0))
-        var y2 = new THREE.LineSegments(yGeo2, lineY2);
+        var y2 = new THREE.LineSegments(yGeo2, mline);
         y2.name = "y2";
         y2._class = "axisText";
 
@@ -293,7 +294,8 @@
         })
         yGeo3.vertices.push(new THREE.Vector3(15, settings.unitScale - 5, 0))
         yGeo3.vertices.push(new THREE.Vector3(15, settings.unitScale - 15, 0))
-        var y3 = new THREE.LineSegments(yGeo3, lineY3);
+        
+        var y3 = new THREE.LineSegments(yGeo3, mline);
         y3.name = "y3";
         y3._class = "axisText";
 
@@ -304,36 +306,25 @@
 
          // draw z
         var zGeo1 =  new THREE.Geometry()
-        var lineZ1 =  new THREE.LineBasicMaterial({
-            color: parameters.color.axis,
-            linewidth: 1
-        })
 
         zGeo1.vertices.push(new THREE.Vector3(0, 10, settings.unitScale))
         zGeo1.vertices.push(new THREE.Vector3(0, 10, settings.unitScale - 10))
-        var z1 = new THREE.LineSegments(zGeo1, lineZ1);
+        var z1 = new THREE.LineSegments(zGeo1, mline);
         z1.name = "z1";
         z1._class = "axisText";
 
         var zGeo2 =  new THREE.Geometry()
-        var lineZ2 =  new THREE.LineBasicMaterial({
-            color: parameters.color.axis,
-            linewidth: 1
-        })
+    
         zGeo2.vertices.push(new THREE.Vector3(0, 20, settings.unitScale))
         zGeo2.vertices.push(new THREE.Vector3(0, 20, settings.unitScale - 10))
-        var z2 = new THREE.LineSegments(zGeo2, lineZ2);
+        var z2 = new THREE.LineSegments(zGeo2, mline);
         z2.name = "z2";
         z2._class = "axisText";
 
         var zGeo3 =  new THREE.Geometry()
-        var lineZ3 =  new THREE.LineBasicMaterial({
-            color: parameters.color.axis,
-            linewidth: 1
-        })
         zGeo3.vertices.push(new THREE.Vector3(0, 10, settings.unitScale))
         zGeo3.vertices.push(new THREE.Vector3(0, 20, settings.unitScale - 10))
-        var z3 = new THREE.LineSegments(zGeo3, lineZ3);
+        var z3 = new THREE.LineSegments(zGeo3, mline);
         z3.name = "z3";
         z3._class = "axisText";
 
@@ -349,42 +340,73 @@
    /************************************************************************************/
 
     function addAxes(){
-        var xAxisGeo =  new THREE.Geometry()
-        var lineX=  new THREE.LineBasicMaterial({
+        
+        var line =  new THREE.LineBasicMaterial({
             color: parameters.color.axis,
             linewidth: 1
         })
+        var mTick = new THREE.MeshLambertMaterial({
+            color: parameters.color.axis,
+         })
+
+        var xAxisGeo =  new THREE.Geometry()
         xAxisGeo.vertices.push(new THREE.Vector3(0, 0, 0))
-        xAxisGeo.vertices.push(new THREE.Vector3(settings.unitScale, 0, 0))
-        var xAxis = new THREE.LineSegments(xAxisGeo, lineX);
+        xAxisGeo.vertices.push(new THREE.Vector3(settings.unitScale * 1.05, 0, 0))
+        
+        var xAxis = new THREE.LineSegments(xAxisGeo, line);
         xAxis.name = "x";
         xAxis._class = "axis";
 
+        var xTickGeo = new THREE.BoxGeometry(1, 10, 1);   
+        var xTick = new THREE.Mesh(xTickGeo, mTick);
+        xTick.position.set(settings.unitScale, 0, 0)
+
+        var xTickGeoMid = new THREE.BoxGeometry(1, 5, 1);   
+        var xTickMid = new THREE.Mesh(xTickGeoMid, mTick);
+        xTickMid.position.set(settings.unitScale * 0.5, 0, 0)
+
         var yAxisGeo =  new THREE.Geometry()
-        var lineY=  new THREE.LineBasicMaterial({
-            color: parameters.color.axis,
-            linewidth: 1
-        })
         yAxisGeo.vertices.push(new THREE.Vector3(0, 0, 0))
-        yAxisGeo.vertices.push(new THREE.Vector3(0, settings.unitScale, 0))
-        var yAxis = new THREE.LineSegments(yAxisGeo, lineY);
+        yAxisGeo.vertices.push(new THREE.Vector3(0, settings.unitScale * 1.05, 0))
+        
+        var yAxis = new THREE.LineSegments(yAxisGeo, line);
         yAxis.name = "y";
         yAxis._class = "axis"
 
+        var yTickGeo = new THREE.BoxGeometry(10, 1, 1);   
+        var yTick = new THREE.Mesh(yTickGeo, mTick);
+        yTick.position.set(0, settings.unitScale, 0)
+
+        var yTickGeoMid = new THREE.BoxGeometry(5, 1, 1);   
+        var yTickMid = new THREE.Mesh(yTickGeoMid, mTick);
+        yTickMid.position.set(0, settings.unitScale * 0.5 , 0)
+
         var zAxisGeo =  new THREE.Geometry()
-        var lineZ=  new THREE.LineBasicMaterial({
-            color: parameters.color.axis,
-            linewidth: 1
-        })
         zAxisGeo.vertices.push(new THREE.Vector3(0, 0, 0))
-        zAxisGeo.vertices.push(new THREE.Vector3(0, 0, settings.unitScale))
-        var zAxis = new THREE.LineSegments(zAxisGeo, lineZ);
+        zAxisGeo.vertices.push(new THREE.Vector3(0, 0, settings.unitScale * 1.05))
+        var zAxis = new THREE.LineSegments(zAxisGeo, line);
         zAxis.name = "z";
         zAxis._class = "axis"
 
+        var zTickGeo = new THREE.BoxGeometry(1, 10, 1);   
+        var zTick = new THREE.Mesh(zTickGeo, mTick);
+        zTick.position.set(0, 0, settings.unitScale)
+
+        var zTickGeoMid = new THREE.BoxGeometry(1, 5, 1);   
+        var zTickMid = new THREE.Mesh(zTickGeoMid, mTick);
+        zTickMid.position.set(0, 0, settings.unitScale * 0.5)
+
         scene.add(xAxis)
+        scene.add(xTick)
+        scene.add(xTickMid)
+
         scene.add(yAxis)
+        scene.add(yTick)
+        scene.add(yTickMid)
+
         scene.add(zAxis)
+        scene.add(zTick)
+        scene.add(zTickMid)
     }
    /************************************************************************************/
    /************************************************************************************/
@@ -452,13 +474,12 @@
 
    // handle which one is selected here
     function onDocumentMouseMove(event) {
-        if(enableMouseSelection){
         event.preventDefault();
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
         if (SELECTED) {
-            if (raycaster.ray.intersectPlane(plane, intersection)) {
+            if (raycaster.ray.intersectPlane(plane, intersection) && enableMouseSelection) {
                 SELECTED.position.copy(intersection.sub(offset));
             }
             return;
@@ -479,11 +500,6 @@
 
             document.getElementById('atomName').innerText = INTERSECTED.atomName
 
-            var ids = INTERSECTED.name.split(":")
-            var id = ids[1]
-            var node = system.getNode(id)
-            node.setPosition(INTERSECTED.position)
-
         } else {
             if (INTERSECTED){
                 INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
@@ -492,7 +508,6 @@
             container.style.cursor = 'auto';
             document.getElementById('atomName').innerText = ""
             document.getElementById('selectEnergy').innerText = ""
-        }
         }
     }
 
@@ -561,7 +576,7 @@
             pos2Copy2 = atom2.position.clone(),
             pos1Final = pos1Copy2.sub(dir.multiplyScalar(size1)),
             pos2Final = pos2Copy2.add(dirCopy.multiplyScalar(size2))
-            console.log(size1 + "," + size2)
+            // console.log(size1 + "," + size2)
 
         return {"p1" : pos1Final, "p2" : pos2Final}
     }
@@ -598,16 +613,16 @@
                }
 
                if (options.displayOption == "momentum space") {
-                    obj.position.x = node.velocity.x * node.mass
-                 	obj.position.y = node.velocity.y * node.mass
-                    obj.position.z = node.velocity.z * node.mass
+                    obj.position.x = node.velocity.x * node.mass * parameters[options.systemOption].momentumScale
+                 	obj.position.y = node.velocity.y * node.mass * parameters[options.systemOption].momentumScale
+                    obj.position.z = node.velocity.z * node.mass * parameters[options.systemOption].momentumScale
                     obj.material.opacity = 1
                }
 
                if (options.displayOption == "energy space") {
                     obj.position.x = node.position_.x
                     obj.position.y = node.position_.y
-                    obj.position.z = (0.2 + 0.9 * node.energy / node.maxEnergy) * settings.unitScale
+                    obj.position.z = (0.2 + 0.9 * node.energy / node.maxEnergy) * settings.energyUnitScale
                }
 
                 // opacity corresponds to energy
@@ -622,13 +637,21 @@
                 }
                
                if (options["momentum as vector"]){
+                    obj.visible = true
                     if (!options["energy as opacity"]) {
                         obj.material.opacity *= 0.7
-                    }
+                    } 
                }
                
                 obj.material.needsUpdate = true
                 obj.material.transparent = true
+            }
+
+            if(obj._class  == "atomcenter"){
+                var atom = scene.getObjectByName("atom:" + obj.aid)
+                obj.position.x = atom.position.x
+                obj.position.y = atom.position.y
+                obj.position.z = atom.position.z
             }
 
             // if this is a bond
@@ -661,11 +684,11 @@
                 obj.visible = true
                 var id = obj.name.split(":")[1]
                 var node = system.getNode(id)
-                    obj.geometry.vertices[0] = node.position
+                    obj.geometry.vertices[0] = node.atom.position.clone()
                     obj.geometry.vertices[1] = node.getMomentum()
                                                    .multiplyScalar(
                                                    parameters[options.systemOption].momentumScale)
-                                                   .add(node.position) 
+                                                   .add(node.atom.position) 
                     obj.geometry.verticesNeedUpdate = true
 
             }
@@ -721,7 +744,7 @@
 
         if(options.displayOption == "position"){
             if(rollBackPosition == true){
-                system.updateCurrentPositionToOldPositionForAll()
+                // system.updateCurrentPositionToOldPositionForAll()
                 rollBackPosition = false
             }
             enableMouseSelection = true
@@ -737,15 +760,17 @@
                     settings.energyHistory.shift()
                 }
                 document.getElementById('energyVal').innerText = parseFloat(system.getEnergy()).toFixed(4);
+
                 // forces & atom energy
                 system.getForceAcc()
                 system.updateNodes()
         } else if (SELECTED != null && SELECTED._class == "atom") {
-                system.selectID = SELECTED.name.split(':')[1]
-                system.copyAtomPositionToNodePosition(+system.selectID)
-                system.updateOldPositionToCurrentPosition(+system.selectID)
+                var selectID = SELECTED.name.split(':')[1]
+                if(options.displayOption == "position"){
+                    system.copyAtomPositionToNodePosition(+selectID)
+                    system.updateOldPositionToCurrentPosition(+selectID)
+                }
                 system.updateEnergyForAll()
-             
         }
 
         drawEnergyHistory();
