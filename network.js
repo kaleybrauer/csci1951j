@@ -116,6 +116,8 @@ var Node = function(atom, aid, name,
     this.name = name;
     this.energy = 0; // could have this properly calculated instead of assuming equilibrium
     this.maxEnergy = 0;
+    this.atom.energy = this.energy
+    this.radius = props.radius
 
     this.atom_ = this.atom.clone()
     this.position_ = this.position.clone()
@@ -209,6 +211,9 @@ Node.prototype.setVisited = function(node) {
 
 Node.prototype.resetVisited = function() {
     this.visited = false
+    this.edges.forEach(function(e){
+        e.resetVisited()
+    })
 }
 
 Node.prototype.addNeighbor = function(node, equilibrium) {
@@ -272,6 +277,7 @@ Node.prototype.updateAtomEnergy = function() {
 
     energy = energy / (settings.unitScale * settings.unitScale);
     this.energy = energy
+    this.atom.energy = energy
 }
 
 /***********************************************************************************/
@@ -344,18 +350,25 @@ Network.prototype.getForceAcc = function() {
     })
 }
 
-Network.prototype.getCenter = function() {
-    var center = {x:0, y:0, z:0}
-    this.nodeList.forEach(function(n, i) {
-        center.x += n.position.x
-        center.y += n.position.y
-        center.z += n.position.z
-    })
-    center.x /= this.nodeList.length
-    center.y /= this.nodeList.length
-    center.z /= this.nodeList.length
+Network.prototype.getBoundingBox = function() {
+    var box = {x1:0, y1:0, z1:0,x2:0, y2:0, z2:0}
 
-    return new THREE.Vector3(center.x, center.y, center.z)
+    this.nodeList.forEach(function(n, i) {
+        if(n.position.x - n.radius < box.x1)
+            box.x1 = n.position.x - n.radius
+        if(n.position.x + n.radius > box.x2)
+            box.x2 = n.position.x  + n.radius
+        if(n.position.y - n.radius < box.y1)
+            box.y1 = n.position.y  - n.radius
+        if(n.position.y + n.radius > box.y2)
+            box.y2 = n.position.y  + n.radius
+        if(n.position.z - n.radius < box.z1)
+            box.z1 = n.position.z  - n.radius
+        if(n.position.z + n.radius > box.z2)
+            box.z2 = n.position.z  + n.radius
+    })
+
+    return box
 }
 
 Network.prototype.updateNodes = function() {
@@ -363,22 +376,28 @@ Network.prototype.updateNodes = function() {
         n.updateVelocity(settings.timeStep)
         n.updatePosition(settings.timeStep)
         n.updateAtomEnergy()
-        console.log(n)
     })
 }
 
-Network.prototype.moveAtom = function(id){
+Network.prototype.updateOldPositionToCurrentPosition = function(id){
     this.nodeList.forEach(function(n, i) {
         // console.log(n.aid + "," + id)
         if(n.aid == id){
-            n.oldposition = n.position.copy()
+            n.oldposition = n.position.clone()
         }
     })
 }
 
-Network.prototype.setMaxEnergies = function() {
+Network.prototype.updateCurrentPositionToOldPositionForAll = function(){
+    this.nodeList.forEach(function(n, i) {
+        n.position = n.oldposition.clone()
+    })
+}
+
+Network.prototype.updateEnergyForAll = function() {
     this.nodeList.forEach(function(n,i) {
         n.energy = n.getAtomEnergy()
+        n.atom.energy = n.energy
         n.maxEnergy = n.getAtomEnergy()
         // console.log(n.maxEnergy)
     })
@@ -432,7 +451,8 @@ parameters = {
         "O": 'hsl(180, 100%, 100%)',
         "bond": 'hsl(7,0%,48%)',
         "momentum": 'hsl(7,0%,48%)',
-        "selected" : 0x754200
+        "selected" : 0x754200,
+        "axis" : 0x000000
     },
     "hsl":{
         "H": {'h':'180', 's':'100%', 'l':'25%'},
@@ -440,7 +460,7 @@ parameters = {
         "bond": {'h':'7', 's':'0%', 'l':'48%'},
         "momentum": {'h':'7', 's':'0%', 'l':'48%'},
     },
-    "bondwidth": 30
+    "bondwidth": 10
 
 }
 
@@ -464,26 +484,33 @@ function buildH2O() {
     var atom2 = new THREE.Mesh(atomGeo2, materialH2);
     var atom3 = new THREE.Mesh(atomGeo3, materialO);
 
+    atom1.radius = settings.unitScale * parameters.radius.H
+    atom2.radius = settings.unitScale * parameters.radius.H
+    atom3.radius = settings.unitScale * parameters.radius.O
+
     var node1 = new Node(atom1, 1, "H", {
         mass: parameters.mass.H,
         position: new THREE.Vector3(150, 10, 0),
         velocity: new THREE.Vector3(0, 0, 0),
         acceleration: new THREE.Vector3(0, 0, 0),
-        force: new THREE.Vector3(0, 0, 0)
+        force: new THREE.Vector3(0, 0, 0),
+        radius: settings.unitScale * parameters.radius.H
     })
     var node2 = new Node(atom2, 2, "H", {
         mass: parameters.mass.H,
         position: new THREE.Vector3(-150, 10, 0),
         velocity: new THREE.Vector3(0, 0, 0),
         acceleration: new THREE.Vector3(0, 0, 0),
-        force: new THREE.Vector3(0, 0, 0)
+        force: new THREE.Vector3(0, 0, 0),
+        radius: settings.unitScale * parameters.radius.H
     })
     var node3 = new Node(atom3, 3, "O", {
         mass: parameters.mass.O,
         position: new THREE.Vector3(0, 100, 0),
         velocity: new THREE.Vector3(0, 0, 0),
         acceleration: new THREE.Vector3(0, 0, 0),
-        force: new THREE.Vector3(0, 0, 0)
+        force: new THREE.Vector3(0, 0, 0),
+        radius: settings.unitScale * parameters.radius.O
     })
 
     node3.addNeighbor(node1, parameters.H2O.OH * settings.unitScale)
@@ -509,20 +536,25 @@ function buildH2() {
 
     var atom1 = new THREE.Mesh(atomGeo1, material1);
     var atom2 = new THREE.Mesh(atomGeo2, material2);
+    
+    atom1.radius = settings.unitScale * parameters.radius.H
+    atom2.radius = settings.unitScale * parameters.radius.H
 
     var node1 = new Node(atom1, 1, "H", {
         mass: parameters.mass.H,
         position: new THREE.Vector3(-(parameters.H2.HH * settings.unitScale) / 2.0, 0, 0),
         velocity: new THREE.Vector3(0, 0, 0),
         acceleration: new THREE.Vector3(0, 0, 0),
-        force: new THREE.Vector3(0, 0, 0)
+        force: new THREE.Vector3(0, 0, 0),
+        radius: settings.unitScale * parameters.radius.H
     })
     var node2 = new Node(atom2, 2, "H", {
         mass: parameters.mass.H,
         position: new THREE.Vector3((parameters.H2.HH * settings.unitScale) / 2.0, 0, 0),
         velocity: new THREE.Vector3(0, 0, 0),
         acceleration: new THREE.Vector3(0, 0, 0),
-        force: new THREE.Vector3(0, 0, 0)
+        force: new THREE.Vector3(0, 0, 0),
+        radius: settings.unitScale * parameters.radius.H
     })
 
     node1.addNeighbor(node2, parameters.H2.HH * settings.unitScale)
@@ -533,8 +565,8 @@ function buildH2() {
 }
 /******************************    Oxygen   *********************************/
 function buildO2() {
-    var atomGeo1 = new THREE.SphereGeometry((parameters.radius.O * settings.unitScale) / 2.0, 100, 100);
-    var atomGeo2 = new THREE.SphereGeometry((parameters.radius.O * settings.unitScale) / 2.0, 100, 100);
+    var atomGeo1 = new THREE.SphereGeometry(parameters.radius.O * settings.unitScale , 100, 100);
+    var atomGeo2 = new THREE.SphereGeometry(parameters.radius.O * settings.unitScale, 100, 100);
 
     var materialWhite1 = new THREE.MeshLambertMaterial({
         color: parameters.color.O
@@ -546,20 +578,25 @@ function buildO2() {
     var atom1 = new THREE.Mesh(atomGeo1, materialWhite1);
     var atom2 = new THREE.Mesh(atomGeo2, materialWhite2);
 
-    var node1 = new Node(atom1, 1, "O", {
-        mass: parameters.mass.O,
-        position: new THREE.Vector3((parameters.O2.OO * settings.unitScale) / 2.0, 0, 0),
-        velocity: new THREE.Vector3(0, 0, 0),
-        acceleration: new THREE.Vector3(0, 0, 0),
-        force: new THREE.Vector3(0, 0, 0)
-    })
+    atom1.radius = settings.unitScale * parameters.radius.O
+    atom2.radius = settings.unitScale * parameters.radius.O
 
-    var node2 = new Node(atom2, 2, "O", {
+    var node1 = new Node(atom1, 1, "O", {
         mass: parameters.mass.O,
         position: new THREE.Vector3(-(parameters.O2.OO * settings.unitScale) / 2.0, 0, 0),
         velocity: new THREE.Vector3(0, 0, 0),
         acceleration: new THREE.Vector3(0, 0, 0),
-        force: new THREE.Vector3(0, 0, 0)
+        force: new THREE.Vector3(0, 0, 0),
+        radius: settings.unitScale * parameters.radius.O
+    })
+
+    var node2 = new Node(atom2, 2, "O", {
+        mass: parameters.mass.O,
+        position: new THREE.Vector3((parameters.O2.OO * settings.unitScale) / 2.0, 0, 0),
+        velocity: new THREE.Vector3(0, 0, 0),
+        acceleration: new THREE.Vector3(0, 0, 0),
+        force: new THREE.Vector3(0, 0, 0),
+        radius: settings.unitScale * parameters.radius.O
     })
 
     node1.addNeighbor(node2, parameters.O2.OO * settings.unitScale)
