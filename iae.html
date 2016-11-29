@@ -98,7 +98,7 @@
         instruction.style.bottom = '10px';
         instruction.style.textAlign = 'left';
         instruction.style.width = '100%';
-        instruction.innerHTML = 'Open the controls on the top right corner, you can find: <b>position mode</b>, atoms are placed in the physical space; <b>momentum space</b>, atoms are placed in the space according to their current momentum; <b>energy space</b>, atoms are placed in the space according to their current energy. If the boxes in the Display Controls are checked, the <b>opacity</b> of each atom corresponds to its <b>energy</b> while the <b>small line</b> in its center corresponds to its <b>momentum</b>. Feel free to <b>zoom</b>, <b>drag</b>, and <b>rotate</b>. To reset the system to its equilibrium position, click Reset System.';
+        instruction.innerHTML = 'Open the controls on the top right corner, You can find: <b>position mode</b>, atoms are placed in the physical space; <b>momentum space</b>, atoms are placed in the space according to their current momentum; <b>energy space</b>, atoms are placed in the space according to their current energy. If the boxes in the Display Controls are checked, the <b>opacity</b> of each atom corresponds to its <b>energy</b> while the <b>small line</b> in its center corresponds to its <b>momentum</b>. Feel free to <b>zoom</b>, <b>drag</b>, and <b>rotate</b>. To reset the system to its equilibrium position, click <b>Reset System</b>.';
 
         // placing 'on' marker
         var text = document.createElement('div');
@@ -245,7 +245,7 @@
         xGeo1.vertices.push(new THREE.Vector3(settings.unitScale, 10, 0))
         var x1 = new THREE.LineSegments(xGeo1, lineX1);
         x1.name = "x1";
-        x1._class = "axis";
+        x1._class = "axisText";
 
         var xGeo2 =  new THREE.Geometry()
         var lineX2 =  new THREE.LineBasicMaterial({
@@ -256,7 +256,7 @@
         xGeo2.vertices.push(new THREE.Vector3(settings.unitScale, 20, 0, 0))
         var x2 = new THREE.LineSegments(xGeo2, lineX2);
         x2.name = "x2";
-        x2._class = "axis";
+        x2._class = "axisText";
 
         scene.add(x1)
         scene.add(x2)
@@ -271,7 +271,7 @@
         yGeo1.vertices.push(new THREE.Vector3(15, settings.unitScale - 5, 0))
         var y1 = new THREE.LineSegments(yGeo1, lineY1);
         y1.name = "y1";
-        y1._class = "axis";
+        y1._class = "axisText";
 
         var yGeo2 =  new THREE.Geometry()
         var lineY2 =  new THREE.LineBasicMaterial({
@@ -282,7 +282,7 @@
         yGeo2.vertices.push(new THREE.Vector3(15, settings.unitScale - 5, 0))
         var y2 = new THREE.LineSegments(yGeo2, lineY2);
         y2.name = "y2";
-        y2._class = "axis";
+        y2._class = "axisText";
 
         var yGeo3 =  new THREE.Geometry()
         var lineY3 =  new THREE.LineBasicMaterial({
@@ -293,7 +293,7 @@
         yGeo3.vertices.push(new THREE.Vector3(15, settings.unitScale - 15, 0))
         var y3 = new THREE.LineSegments(yGeo3, lineY3);
         y3.name = "y3";
-        y3._class = "axis";
+        y3._class = "axisText";
 
         scene.add(y1)
         scene.add(y2)
@@ -311,7 +311,7 @@
         zGeo1.vertices.push(new THREE.Vector3(0, 10, settings.unitScale - 10))
         var z1 = new THREE.LineSegments(zGeo1, lineZ1);
         z1.name = "z1";
-        z1._class = "axis";
+        z1._class = "axisText";
 
         var zGeo2 =  new THREE.Geometry()
         var lineZ2 =  new THREE.LineBasicMaterial({
@@ -322,7 +322,7 @@
         zGeo2.vertices.push(new THREE.Vector3(0, 20, settings.unitScale - 10))
         var z2 = new THREE.LineSegments(zGeo2, lineZ2);
         z2.name = "z2";
-        z2._class = "axis";
+        z2._class = "axisText";
 
         var zGeo3 =  new THREE.Geometry()
         var lineZ3 =  new THREE.LineBasicMaterial({
@@ -333,7 +333,7 @@
         zGeo3.vertices.push(new THREE.Vector3(0, 20, settings.unitScale - 10))
         var z3 = new THREE.LineSegments(zGeo3, lineZ3);
         z3.name = "z3";
-        z3._class = "axis";
+        z3._class = "axisText";
 
         scene.add(z1)
         scene.add(z2)
@@ -573,8 +573,12 @@
         var objects = scene.children
 
         objects.forEach(function(obj) {
-            if(obj._class == "axis"){
+            if (obj._class == "axis"){
                 obj.visible = options.axes
+            }
+
+            if (obj._class == "axisText"){
+                obj.visible = (options.displayOption == "position")
             }
 
             // if this is a node (atom)
@@ -605,7 +609,7 @@
 
                 // opacity corresponds to energy
                 // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
-                if (options["energy as opacity"] == true) {
+                if (options["energy as opacity"]) {
                     if (node.maxEnergy != 0) {
                         obj.material.opacity = 0.2 + 0.9 * node.energy / node.maxEnergy
                     }
@@ -614,9 +618,10 @@
                     }
                 }
                
-               if(options["momentum as vector"]){
-                if(obj.material.opacity > 0.7)
-                    obj.material.opacity *= 0.7
+               if (options["momentum as vector"]){
+                    if (!options["energy as opacity"]) {
+                        obj.material.opacity *= 0.7
+                    }
                }
                
                 obj.material.needsUpdate = true
