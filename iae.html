@@ -20,8 +20,7 @@
     <script src='js/libs/stats.min.js'></script>
     <script src="network.js"></script>
     <script>
-    var container;
-    var camera, controls, scene, renderer, objects = [];
+    var container,camera, controls, scene, renderer, objects = [];
     // this "options" variable controls everything
     // it would be binded to the UI in the function called "setUpOptions"
     var options = {
@@ -98,7 +97,7 @@
         instruction.style.bottom = '10px';
         instruction.style.textAlign = 'left';
         instruction.style.width = '100%';
-        instruction.innerHTML = 'Open the controls on the top right corner, You can find: <b>position mode</b>, atoms are placed in the physical space; <b>momentum space</b>, atoms are placed in the space according to their current momentum; <b>energy space</b>, atoms are placed in the space according to their current energy. If the boxes in the Display Controls are checked, the <b>opacity</b> of each atom corresponds to its <b>energy</b> while the <b>small line</b> in its center corresponds to its <b>momentum</b>. Feel free to <b>zoom</b>, <b>drag</b>, and <b>rotate</b>. To reset the system to its equilibrium position, click Reset System.';
+        instruction.innerHTML = 'Open the controls on the top right corner, You can find: <b>position mode</b>, atoms are placed in the physical space; <b>momentum space</b>, atoms are placed in the space according to their current momentum; <b>energy space</b>, atoms are placed in the space according to their current energy. If the boxes in the Display Controls are checked, the <b>opacity</b> of each atom corresponds to its <b>energy</b> while the <b>small line</b> in its center corresponds to its <b>momentum</b>. Feel free to <b>zoom</b>, <b>drag</b>, and <b>rotate</b>. To reset the system to its equilibrium position, click <b>Reset System</b>.';
 
         // placing 'on' marker
         var text = document.createElement('div');
@@ -106,7 +105,7 @@
         text.style.bottom = '65px';
         text.style.textAlign = 'left';
         text.style.width = '100%';
-        text.innerHTML = 'Mouse is on: <span id="moleculeName" ></span>, its energy is <span id="selectEnergy" ></span>';
+        text.innerHTML = 'Mouse is on: <span id="atomName" ></span>, its energy is <span id="selectEnergy" ></span>';
 
         canvas.width = settings.maxHistory;
         canvas.height = settings.maxHistory / 40;
@@ -147,7 +146,7 @@
    /************************************************************************************/
    // for an atom (mesh object), we define a couple of attributes that are not provided by the library
    // they are a. aid, the atom id
-   //          b. moleculeName
+   //          b. atomName
    // for each of the object, _class is defined, 
    // it could be one of these values: atom, momentum, bond, axis
    // we use this _class to update the object accordingly
@@ -174,7 +173,7 @@
         // go through the list and add each node (atom) to the scene
         atomList.forEach(function(node) {
             node.atom.name = "atom:" + node.aid;
-            node.atom.moleculeName = node.name
+            node.atom.atomName = node.name
             node.atom.aid = node.aid
             node.atom._class = "atom"
             scene.add(node.atom)
@@ -474,7 +473,7 @@
             }
             container.style.cursor = 'pointer';
 
-            document.getElementById('moleculeName').innerText = INTERSECTED.moleculeName
+            document.getElementById('atomName').innerText = INTERSECTED.atomName
 
             var ids = INTERSECTED.name.split(":")
             var id = ids[1]
@@ -487,7 +486,7 @@
             }
             INTERSECTED = null;
             container.style.cursor = 'auto';
-            document.getElementById('moleculeName').innerText = ""
+            document.getElementById('atomName').innerText = ""
             document.getElementById('selectEnergy').innerText = ""
         }
     }
@@ -537,7 +536,7 @@
         setTimeout(function() {
             requestAnimationFrame(animate);
             render();
-        }, 1000 / 25); // decrease the frame rate to 1000 / 25
+        }, 1000 / 25); // decrease the frame rate to 25 fps
     }
 
    /************************************************************************************/
@@ -606,7 +605,7 @@
 
                 // opacity corresponds to energy
                 // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
-                if (options["energy as opacity"] == true) {
+                if (options["energy as opacity"]) {
                     if (node.maxEnergy != 0) {
                         obj.material.opacity = 0.2 + 0.9 * node.energy / node.maxEnergy
                     }
@@ -704,16 +703,15 @@
    /************************************************************************************/
 
     function render() {
-        drawEnergyHistory();
-    
-        updateScene()
         controls.update();
         // only update forces and energies if an atom is not currently clicked on
         settings.timeStep = options.timestep
+        
         if(INTERSECTED){
             document.getElementById('selectEnergy').innerText 
             = system.getNode(+INTERSECTED.aid).energy.toFixed(4)
         }
+
         if(options.displayOption == "position"){
             if(rollBackPosition == true){
                 system.updateCurrentPositionToOldPositionForAll()
@@ -723,21 +721,24 @@
                 system.selectID = SELECTED.name.split(':')[1]
                 system.updateOldPositionToCurrentPosition(+system.selectID)
                 system.updateEnergyForAll()
-             } else if (SELECTED == null){
-            // system energy
-            settings.energyHistory.push(system.getEnergy())
-            if (settings.energyHistory.length > settings.maxHistory) { // keep only 500 history
-                settings.energyHistory.shift()
-            }
-            document.getElementById('energyVal').innerText = parseFloat(system.getEnergy()).toFixed(4);
-            // forces & atom energy
-            system.getForceAcc()
-            system.updateNodes()
+            } else if (SELECTED == null){
+                // system energy
+                settings.energyHistory.push(system.getEnergy())
+                if (settings.energyHistory.length > settings.maxHistory) { // keep only 500 history
+                    settings.energyHistory.shift()
+                }
+                document.getElementById('energyVal').innerText = parseFloat(system.getEnergy()).toFixed(4);
+                // forces & atom energy
+                system.getForceAcc()
+                system.updateNodes()
             }
         } else {
             rollBackPosition = true
         }
-        var box = system.getBoundingBox()
+        drawEnergyHistory();
+        updateScene();
+
+        // var box = system.getBoundingBox()
 
         // console.log(box)
         // if(box.x1 < -innerWidth / 2.0 || box.x2 > innerWidth / 2.0 ||
