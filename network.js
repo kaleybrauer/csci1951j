@@ -62,15 +62,18 @@ var Node = function(atom, aid, name,
     // for reseting the system
     this.atom_ = this.atom.clone()
     this.position_ = this.position.clone()
+    this.velocity_ = this.velocity.clone()
     this.oldposition_ = this.position_.clone()
-    this.acceleration_ = props.acceleration;
+    this.acceleration_ = this.acceleration.clone();
 }
 
 Node.prototype.reset = function() {
-    this.atom = this.atom_.clone()
+    // this.atom = this.atom_.clone()
+    // this.atom._class = "atom"
     this.position = this.position_.clone()
     this.oldposition = this.position_.clone()
-    this.acceleration = this.acceleration_
+    this.acceleration = this.acceleration_.clone()
+    this.velocity = this.velocity_.clone()
     this.energy = 0; // same as above - could properly calculate
     this.maxEnergy = 0;
         // TODO: FM why??????
