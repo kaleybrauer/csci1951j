@@ -8,7 +8,6 @@
     <style>
     body {
         background-color: #b0b0b0;
-        overflow: hidden;
     }
     </style>
 </head>
@@ -106,7 +105,7 @@
         text.style.bottom = '65px';
         text.style.textAlign = 'left';
         text.style.width = '100%';
-        text.innerHTML = 'Unit = 1:' + settings.unitScale + '. (???) Mouse is on: <span id="atomName" ></span>, its energy is <span id="selectEnergy" ></span>. ';
+        text.innerHTML = 'Unit = 1:' + settings.unitScale + ' | Mouse is on: <span id="atomName" ></span> | Energy is <span id="selectEnergy" ></span>. ';
 
         canvas.width = settings.maxHistory;
         canvas.height = settings.maxHistory / 40;
@@ -486,7 +485,7 @@
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
         if (SELECTED) {
-            if (raycaster.ray.intersectPlane(plane, intersection) && enableMouseSelection) {
+            if (raycaster.ray.intersectPlane(plane, intersection) && options.displayOption == "position") {
                 SELECTED.position.copy(intersection.sub(offset));
             }
             return;
@@ -531,7 +530,7 @@
         if (intersects.length > 0) {
             controls.enabled = false;
             SELECTED = intersects[0].object;
-            if (raycaster.ray.intersectPlane(plane, intersection)) {
+            if (raycaster.ray.intersectPlane(plane, intersection) && options.displayOption == "position") {
                 offset.copy(intersection).sub(SELECTED.position);
             }
             container.style.cursor = 'move';
@@ -629,7 +628,10 @@
                if (options.displayOption == "energy space") {
                     obj.position.x = node.position_.x
                     obj.position.y = node.position_.y
+
                     obj.position.z = (0.2 + 0.9 * node.energy / node.maxEnergy) * settings.energyUnitScale
+                    if(!obj.position.z)
+                        obj.position.z = 0
                }
 
                 // opacity corresponds to energy
@@ -644,7 +646,6 @@
                 }
                
                if (options["momentum as vector"]){
-                    obj.visible = true
                     if (!options["energy as opacity"]) {
                         obj.material.opacity *= 0.7
                     } 
@@ -652,6 +653,7 @@
                
                 obj.material.needsUpdate = true
                 obj.material.transparent = true
+                obj.visible = true
             }
 
             if(obj._class  == "atomcenter"){
