@@ -359,11 +359,13 @@
 
         var xTickGeo = new THREE.BoxGeometry(1, 10, 1);   
         var xTick = new THREE.Mesh(xTickGeo, mTick);
-        xTick.position.set(settings.unitScale, 0, 0)
+        xTick.position.set(settings.unitScale, 0, 0);
+        xTick._class = "tick"
 
         var xTickGeoMid = new THREE.BoxGeometry(1, 5, 1);   
         var xTickMid = new THREE.Mesh(xTickGeoMid, mTick);
-        xTickMid.position.set(settings.unitScale * 0.5, 0, 0)
+        xTickMid.position.set(settings.unitScale * 0.5, 0, 0);
+        xTickMid._class = "tick";
 
         var yAxisGeo =  new THREE.Geometry()
         yAxisGeo.vertices.push(new THREE.Vector3(0, 0, 0))
@@ -375,11 +377,13 @@
 
         var yTickGeo = new THREE.BoxGeometry(10, 1, 1);   
         var yTick = new THREE.Mesh(yTickGeo, mTick);
-        yTick.position.set(0, settings.unitScale, 0)
+        yTick.position.set(0, settings.unitScale, 0);
+        yTick._class = "tick"
 
         var yTickGeoMid = new THREE.BoxGeometry(5, 1, 1);   
         var yTickMid = new THREE.Mesh(yTickGeoMid, mTick);
-        yTickMid.position.set(0, settings.unitScale * 0.5 , 0)
+        yTickMid.position.set(0, settings.unitScale * 0.5 , 0);
+        yTickMid._class = "tick"
 
         var zAxisGeo =  new THREE.Geometry()
         zAxisGeo.vertices.push(new THREE.Vector3(0, 0, 0))
@@ -390,11 +394,13 @@
 
         var zTickGeo = new THREE.BoxGeometry(1, 10, 1);   
         var zTick = new THREE.Mesh(zTickGeo, mTick);
-        zTick.position.set(0, 0, settings.unitScale)
+        zTick.position.set(0, 0, settings.unitScale);
+        zTick._class = "tick"
 
         var zTickGeoMid = new THREE.BoxGeometry(1, 5, 1);   
         var zTickMid = new THREE.Mesh(zTickGeoMid, mTick);
-        zTickMid.position.set(0, 0, settings.unitScale * 0.5)
+        zTickMid.position.set(0, 0, settings.unitScale * 0.5);
+        zTickMid._class = "tick"
 
         scene.add(xAxis)
         scene.add(xTick)
@@ -592,12 +598,12 @@
         var objects = scene.children
 
         objects.forEach(function(obj) {
-            if (obj._class == "axis"){
+            if (obj._class == "axis" || obj._class == "tick"){
                 obj.visible = options.axes
             }
 
             if (obj._class == "axisText"){
-                obj.visible = (options.displayOption == "position")
+                obj.visible = (options.displayOption == "position") && (options.axes == true)
             }
 
             // if this is a node (atom)
@@ -777,7 +783,7 @@
         drawEnergyHistory();
         updateScene();
         
-
+        // try to move the camera
         // var box = system.getBoundingBox()
 
         // console.log(box)
