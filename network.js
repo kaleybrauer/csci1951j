@@ -419,7 +419,7 @@ parameters = {
         "bond": {'h':'7', 's':'0%', 'l':'48%'},
         "momentum": {'h':'7', 's':'0%', 'l':'48%'},
     },
-    "bondwidth": 10
+    "bondwidth": 20
 
 }
 
