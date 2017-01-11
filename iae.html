@@ -1,811 +1,307 @@
 <!-- <!DOCTYPE html> -->
 <html>
-
 <head>
-    <title>Interactive Atomistic Environment</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <style>
-    body {
-        background-color: #b0b0b0;
-    }
-    </style>
+	<title>Interactive Atomistic Environment</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<style>
+		body {
+			background-color: #f0f0f0;
+			overflow: hidden;
+		}
+	</style>
 </head>
-
 <body>
-    <script src="js/libs/three.js"></script>
-    <script src="js/controls/TrackballControls.js"></script>
-    <script src='js/libs/dat.gui.min.js'></script>
-    <script src='js/libs/stats.min.js'></script>
+	<script src="js/libs/three.js"></script>
+	<script src="js/controls/TrackballControls.js"></script>
+	<script src='js/libs/dat.gui.min.js'></script>
     <script src="network.js"></script>
-    <script>
-    var container,camera, controls, scene, renderer, objects = [];
-    // this "options" variable controls everything
-    // it would be binded to the UI in the function called "setUpOptions"
-    var options = {
-            timestep: 0.05,
-            systemOption: "H2",         // which system we are showing
-            displayOption: "position",  // which display we are showing (in this case, position space)
-            "energy as opacity": false, // whether or not the energy is encoded in the opacity
-            "momentum as vector": false,
-            axes: true
-        };
-    var energyVal = 0;
-    var plane = new THREE.Plane();
-    var raycaster = new THREE.Raycaster();
-    var mouse = new THREE.Vector2(),
-        offset = new THREE.Vector3(),
-        intersection = new THREE.Vector3(),
-        INTERSECTED, SELECTED;
-
-    var system = systems[options.systemOption]
-    var canvas = document.createElement('canvas');
-    var context = canvas.getContext('2d');
-    var rollBackPosition = false
-    var enableMouseSelection = true
-    context.fillStyle = 'rgba(127, 127, 127, 0.3)';
-
-    init();
-    animate();
-
-   /************************************************************************************/
-   /************************************************************************************/
-   /************************************* init the scene  ******************************/
-   /************************************************************************************/
-   /************************************************************************************/
-   
-    function init() {
-        settings.maxHistory = window.innerWidth - 165;
-        container = document.createElement('div');
-        document.body.appendChild(container);
-        // using orthographic camera
-        camera = new THREE.OrthographicCamera( window.innerWidth / -2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / -2, -1000, 1000);
-        camera.position.x = 300;
-        camera.position.y = 300;
-        camera.position.z = 300;
-
-        setupSystem();
-
-        renderer = new THREE.WebGLRenderer({
-            antialias: true
-        });
-
-        renderer.setClearColor(0xf0f0f0);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.sortObjects = false;
-        container.appendChild(renderer.domElement);
-
-        // placing title
-        var title = document.createElement('div');
-        title.style.position = 'absolute';
-        title.style.top = '10px';
-        title.style.textAlign = 'center';
-        title.style.width = '100%';
-        title.innerHTML = 'Interactive Atomistic Environment for ' + options.systemOption;
-
-        // placing energy marker
-        var energy = document.createElement('div');
-        energy.style.position = 'absolute';
-        energy.style.bottom = '30px';
-        energy.style.textAlign = 'left';
-        energy.style.width = '100%';
-        energy.innerHTML = 'Energy (J): <span id="energyVal" ></span>';
-
-       /* var instruction = document.createElement('div');
-        instruction.style.position = 'absolute';
-        instruction.style.bottom = '10px';
-        instruction.style.textAlign = 'left';
-        instruction.style.width = '100%';*/
-        // instruction.innerHTML = 'Open the controls on the top right corner, you can find: <b>position mode</b>, atoms are placed in the physical space; <b>momentum space</b>, atoms are placed in the space according to their current momentum; <b>energy space</b>, atoms are placed in the space according to their current energy. If the boxes in the Display Controls are checked, the <b>opacity</b> of each atom corresponds to its <b>energy</b> while the <b>small line</b> in its center corresponds to its <b>momentum</b>. Feel free to <b>zoom</b>, <b>drag</b>, and <b>rotate</b>. To reset the system to its equilibrium position, click <b>Reset System</b>.';
-
-        // placing 'on' marker
-        var text = document.createElement('div');
-        text.style.position = 'absolute';
-        text.style.bottom = '10px';
-        text.style.textAlign = 'left';
-        text.style.width = '100%';
-        text.innerHTML = 'Unit: 1 Angstrom = 1 axis tic | Mouse is on: <span id="atomName" ></span> | Energy is <span id="selectEnergy" ></span> (J)';
-
-        canvas.width = settings.maxHistory;
-        canvas.height = settings.maxHistory / 40;
-        canvas.style.position = 'absolute';
-        canvas.style.bottom = "30px";
-        canvas.style.left = '150px';
-        canvas.style.right = '10px';
-
-        container.appendChild(title);
-        container.appendChild(energy);
-        container.appendChild(text);
-        container.appendChild(canvas);
-        //container.appendChild(instruction);
-
-        setupOptions();
-
-        renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
-        renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
-        renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
-
-        controls = new THREE.TrackballControls(camera, renderer.domElement);
-        controls.rotateSpeed = 5.0;
-        controls.zoomSpeed = 1.01;
-        controls.panSpeed = 0.8;
-        controls.noZoom = false;
-        controls.noPan = false;
-        controls.staticMoving = true;
-        controls.dynamicDampingFactor = 0.3;
-
-        window.addEventListener('resize', onWindowResize, false);
-    }
-
-   
-   /************************************************************************************/
-   /************************************************************************************/
-   /*************************** set up the system to show  ***************************/
-   /************************************************************************************/
-   /************************************************************************************/
-   // for an atom (mesh object), we define a couple of attributes that are not provided by the library
-   // they are a. aid, the atom id
-   //          b. atomName
-   // for each of the objects, _class is defined, 
-   // it could be one of these values: atom, momentum, bond, axis
-   // we use this _class to update the object accordingly
-    function setupSystem() {
-        system = systems[options.systemOption]
-        system.reset()
-        settings.energyHistory = []
-        objects = []
-        
-        scene = new THREE.Scene();
-        scene.add(new THREE.AmbientLight(0x505050));
-
-        var light = new THREE.SpotLight(0xffffff, 1.5);
-        light.position.set(0, 500, 2000);
-        scene.add(light);
-        
-        if(options.axes){
-            addAxes();
-            addAxesText();
-        }
-
-        var atomList = system.getNodeList();
-
-        // go through the list and add each node (atom) to the scene
-        atomList.forEach(function(node) {
-            // add node
-            node.atom.name = "atom:" + node.aid;
-            node.atom.atomName = node.name
-            node.atom.aid = node.aid
-            node.atom.radius = node.radius // ?????
-            node.atom._class = "atom"
-
-            scene.add(node.atom)
-            objects.push(node.atom)
-
-            var atomCenterGeo = new THREE.SphereGeometry(2, 100, 100);
-            var atomCenterMaterial = new THREE.MeshLambertMaterial({
-                color: parameters.color.center
-            })
-            var atomCenter = new THREE.Mesh(atomCenterGeo, atomCenterMaterial);
-            atomCenter._class = "atomcenter"
-            atomCenter.position.set(node.position)
-            atomCenter.aid = node.aid
-
-            scene.add(atomCenter)
-
-            // add the vector to show momentum but make it invisible
-            var momentumGeo =  new THREE.Geometry()
-            var lineMaterial =  new THREE.LineBasicMaterial({
-                color: parameters.color.momentum,
-                linewidth: 1
-            })
-            momentumGeo.vertices.push(node.position.clone())
-            momentumGeo.vertices.push(node.getMomentum())
-            var momentumLine = new THREE.LineSegments(momentumGeo, lineMaterial);
-            momentumLine.name = "atom:" + node.aid;
-            momentumLine.visible = false
-            momentumLine._class = "momentum"
-
-            scene.add(momentumLine)
-
-            // add the bond 
-            node.edges.forEach(function(edge) {
-                // set up the bond
-                if (edge.visited == false) {
-                    var lineGeo = new THREE.Geometry()
-                    var lineMaterial = new THREE.LineBasicMaterial({
-                        color: parameters.color.bond[edge.node1.name + edge.node2.name],
-                        linewidth: parameters.bondwidth
-                    })
-
-                    var bondPos = getBondPosition(edge.node1, edge.node2)
-
-                    lineGeo.vertices.push(bondPos.p1)
-                    lineGeo.vertices.push(bondPos.p2)
-                    var line = new THREE.LineSegments(lineGeo, lineMaterial);
-
-                    line.name = "line:" + edge.node1.aid + ":" + edge.node2.aid
-                    line._class = "bond"
-                    line.visible = true
-                    line.opacity = 1
-
-                    scene.add(line)
-                    edge.visited = true
-                    node.setVisitedEdge(edge.node2)
-                }
-            })
-        })
-    }
-    /************************************************************************************/
-   /************************************************************************************/
-   /***************************** draw the labels on the axes  *************************/
-   /************************************************************************************/
-   /************************************************************************************/
-
-    // notice: I draw the x, y, z letters using just lines
-    // which I feel it is not the best way
-    // there is a long long long code to do this by loading fonts at
-    // https://threejs.org/docs/index.html?q=text#Reference/Geometries/TextGeometry
-    // I gave up because we are short on time
-    // for the future work, this is a place to improve
-    function addAxesText(){
-        // draw x
-        var xGeo1 =  new THREE.Geometry()
-        var mline =  new THREE.LineBasicMaterial({
-            color: parameters.color.axis,
-            linewidth: 1
-        })
-        xGeo1.vertices.push(new THREE.Vector3(settings.unitScale - 10, 20, 0))
-        xGeo1.vertices.push(new THREE.Vector3(settings.unitScale, 10, 0))
-        var x1 = new THREE.LineSegments(xGeo1, mline);
-        x1.name = "x1";
-        x1._class = "axisText";
-
-        var xGeo2 =  new THREE.Geometry()
-        xGeo2.vertices.push(new THREE.Vector3(settings.unitScale - 10, 10, 0))
-        xGeo2.vertices.push(new THREE.Vector3(settings.unitScale, 20, 0, 0))
-        var x2 = new THREE.LineSegments(xGeo2, mline);
-        x2.name = "x2";
-        x2._class = "axisText";
-
-        scene.add(x1)
-        scene.add(x2)
-
-        // draw y
-        var yGeo1 =  new THREE.Geometry()
-        yGeo1.vertices.push(new THREE.Vector3(10, settings.unitScale, 0))
-        yGeo1.vertices.push(new THREE.Vector3(15, settings.unitScale - 5, 0))
-        var y1 = new THREE.LineSegments(yGeo1, mline);
-        y1.name = "y1";
-        y1._class = "axisText";
-
-        var yGeo2 =  new THREE.Geometry()
-        yGeo2.vertices.push(new THREE.Vector3(20, settings.unitScale, 0))
-        yGeo2.vertices.push(new THREE.Vector3(15, settings.unitScale - 5, 0))
-        var y2 = new THREE.LineSegments(yGeo2, mline);
-        y2.name = "y2";
-        y2._class = "axisText";
-
-        var yGeo3 =  new THREE.Geometry()
-        var lineY3 =  new THREE.LineBasicMaterial({
-            color: parameters.color.axis,
-            linewidth: 1
-        })
-        yGeo3.vertices.push(new THREE.Vector3(15, settings.unitScale - 5, 0))
-        yGeo3.vertices.push(new THREE.Vector3(15, settings.unitScale - 15, 0))
-        
-        var y3 = new THREE.LineSegments(yGeo3, mline);
-        y3.name = "y3";
-        y3._class = "axisText";
-
-        scene.add(y1)
-        scene.add(y2)
-        scene.add(y3)
-
-
-         // draw z
-        var zGeo1 =  new THREE.Geometry()
-
-        zGeo1.vertices.push(new THREE.Vector3(0, 10, settings.unitScale))
-        zGeo1.vertices.push(new THREE.Vector3(0, 10, settings.unitScale - 10))
-        var z1 = new THREE.LineSegments(zGeo1, mline);
-        z1.name = "z1";
-        z1._class = "axisText";
-
-        var zGeo2 =  new THREE.Geometry()
-    
-        zGeo2.vertices.push(new THREE.Vector3(0, 20, settings.unitScale))
-        zGeo2.vertices.push(new THREE.Vector3(0, 20, settings.unitScale - 10))
-        var z2 = new THREE.LineSegments(zGeo2, mline);
-        z2.name = "z2";
-        z2._class = "axisText";
-
-        var zGeo3 =  new THREE.Geometry()
-        zGeo3.vertices.push(new THREE.Vector3(0, 10, settings.unitScale))
-        zGeo3.vertices.push(new THREE.Vector3(0, 20, settings.unitScale - 10))
-        var z3 = new THREE.LineSegments(zGeo3, mline);
-        z3.name = "z3";
-        z3._class = "axisText";
-
-        scene.add(z1)
-        scene.add(z2)
-        scene.add(z3)
-    }
-
-   /************************************************************************************/
-   /************************************************************************************/
-   /************************************ draw axes  ************************************/
-   /************************************************************************************/
-   /************************************************************************************/
-
-    function addAxes(){
-        
-        var line =  new THREE.LineBasicMaterial({
-            color: parameters.color.axis,
-            linewidth: 1
-        })
-        var mTick = new THREE.MeshLambertMaterial({
-            color: parameters.color.axis,
-         })
-
-        var xAxisGeo =  new THREE.Geometry()
-        xAxisGeo.vertices.push(new THREE.Vector3(0, 0, 0))
-        xAxisGeo.vertices.push(new THREE.Vector3(settings.unitScale * 1.05, 0, 0))
-        
-        var xAxis = new THREE.LineSegments(xAxisGeo, line);
-        xAxis.name = "x";
-        xAxis._class = "axis";
-
-        var xTickGeo = new THREE.BoxGeometry(1, 10, 1);   
-        var xTick = new THREE.Mesh(xTickGeo, mTick);
-        xTick.position.set(settings.unitScale, 0, 0);
-        xTick._class = "tick"
-
-        var xTickGeoMid = new THREE.BoxGeometry(1, 5, 1);   
-        var xTickMid = new THREE.Mesh(xTickGeoMid, mTick);
-        xTickMid.position.set(settings.unitScale * 0.5, 0, 0);
-        xTickMid._class = "tick";
-
-        var yAxisGeo =  new THREE.Geometry()
-        yAxisGeo.vertices.push(new THREE.Vector3(0, 0, 0))
-        yAxisGeo.vertices.push(new THREE.Vector3(0, settings.unitScale * 1.05, 0))
-        
-        var yAxis = new THREE.LineSegments(yAxisGeo, line);
-        yAxis.name = "y";
-        yAxis._class = "axis"
-
-        var yTickGeo = new THREE.BoxGeometry(10, 1, 1);   
-        var yTick = new THREE.Mesh(yTickGeo, mTick);
-        yTick.position.set(0, settings.unitScale, 0);
-        yTick._class = "tick"
-
-        var yTickGeoMid = new THREE.BoxGeometry(5, 1, 1);   
-        var yTickMid = new THREE.Mesh(yTickGeoMid, mTick);
-        yTickMid.position.set(0, settings.unitScale * 0.5 , 0);
-        yTickMid._class = "tick"
-
-        var zAxisGeo =  new THREE.Geometry()
-        zAxisGeo.vertices.push(new THREE.Vector3(0, 0, 0))
-        zAxisGeo.vertices.push(new THREE.Vector3(0, 0, settings.unitScale * 1.05))
-        var zAxis = new THREE.LineSegments(zAxisGeo, line);
-        zAxis.name = "z";
-        zAxis._class = "axis"
-
-        var zTickGeo = new THREE.BoxGeometry(1, 10, 1);   
-        var zTick = new THREE.Mesh(zTickGeo, mTick);
-        zTick.position.set(0, 0, settings.unitScale);
-        zTick._class = "tick"
-
-        var zTickGeoMid = new THREE.BoxGeometry(1, 5, 1);   
-        var zTickMid = new THREE.Mesh(zTickGeoMid, mTick);
-        zTickMid.position.set(0, 0, settings.unitScale * 0.5);
-        zTickMid._class = "tick"
-
-        scene.add(xAxis)
-        scene.add(xTick)
-        scene.add(xTickMid)
-
-        scene.add(yAxis)
-        scene.add(yTick)
-        scene.add(yTickMid)
-
-        scene.add(zAxis)
-        scene.add(zTick)
-        scene.add(zTickMid)
-    }
-   /************************************************************************************/
-   /************************************************************************************/
-   /************************** called when changing options  ***************************/
-   /************************************************************************************/
-   /************************************************************************************/
-
-    function setupOptions() {
-        var folder;
-        var gui = new dat.GUI( { autoPlace: true, width: 320});
-
-        // simulation controls
-        folder = gui.addFolder("Simulation Controls");
-        folder.add(options, "timestep", 0.05, 2.0, 0.01).name("Timestep (s)").onChange(render);
-
-        // display controls
-        folder = gui.addFolder("Display");
-
-        // when one of the items is clicked, call the function setoptions.displayOption to swicth between different spaces
-        // bind the menu to options.displayOption
-        folder.add(options, "displayOption", ["position" , "momentum space", "energy space"]).name("Display").onChange(render);
- 
-        // when the option is checked / unchecked, call the responding function     
-        // bind the menu to options["energy as opacity"] and options["momentum as vector"]
-        folder.add(options, "energy as opacity").onChange(render);
-        folder.add(options, "momentum as vector").onChange(render);
-        folder.add(options, "axes").onChange(render);
-
-        // setup system
-        folder = gui.addFolder("Setup System");
-
-        // if the user changes the system, reset
-        // bind the menu to options.systemOption
-        folder.add(options, "systemOption", ["H2", "O2", "H2O"]).name("System").onChange(setupSystem); // render
-
-        // reset the system
-        var buttonReset = {
-            resetSystem: function() {
-                // setupSystem()
-                system.reset()
-                settings.energyHistory = []
-            }
-        };
-        folder.add(buttonReset, 'resetSystem').name("Reset System").onChange(render);
-
-        gui.close();
-    }
-
-   /************************************************************************************/
-   /************************************************************************************/
-   /********************************* resize windows  **********************************/
-   /************************************************************************************/
-   /************************************************************************************/
-
-    function onWindowResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-   /************************************************************************************/
-   /************************************************************************************/
-   /********************************* mouse movement  **********************************/
-   /************************************************************************************/
-   /************************************************************************************/
-
-   // handle which one is selected here
-    function onDocumentMouseMove(event) {
-        event.preventDefault();
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        if (SELECTED) {
-            if (raycaster.ray.intersectPlane(plane, intersection) && options.displayOption == "position") {
-                SELECTED.position.copy(intersection.sub(offset));
-            }
-            return;
-        }
-        var intersects = raycaster.intersectObjects(objects);
-        if (intersects.length > 0) {
-            if (INTERSECTED != intersects[0].object) {
-                if (INTERSECTED)
-                    INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
-                INTERSECTED = intersects[0].object;
-                plane.setFromNormalAndCoplanarPoint(
-                    camera.getWorldDirection(plane.normal),
-                    INTERSECTED.position);
-                INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-                INTERSECTED.material.emissive.setHex(parameters.color.selected);
-            }
-            container.style.cursor = 'pointer';
-
-            document.getElementById('atomName').innerText = INTERSECTED.atomName
-
-        } else {
-            if (INTERSECTED){
-                INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
-            }
-            INTERSECTED = null;
-            container.style.cursor = 'auto';
-            document.getElementById('atomName').innerText = ""
-            document.getElementById('selectEnergy').innerText = ""
-        }
-    }
-
-   /************************************************************************************/
-   /************************************************************************************/
-   /***************************** when mouse is pressed  *******************************/
-   /************************************************************************************/
-   /************************************************************************************/
-
-    function onDocumentMouseDown(event) {
-        event.preventDefault();
-        raycaster.setFromCamera(mouse, camera);
-        var intersects = raycaster.intersectObjects(objects);
-        if (intersects.length > 0) {
-            controls.enabled = false;
-            SELECTED = intersects[0].object;
-            if (raycaster.ray.intersectPlane(plane, intersection) && options.displayOption == "position") {
-                offset.copy(intersection).sub(SELECTED.position);
-            }
-            container.style.cursor = 'move';
-        }
-    }
-
-   /************************************************************************************/
-   /************************************************************************************/
-   /***************************** when mouse is released  ******************************/
-   /************************************************************************************/
-   /************************************************************************************/
-
-    function onDocumentMouseUp(event) {
-        event.preventDefault();
-        controls.enabled = true;
-        if (INTERSECTED) {
-            SELECTED = null;
-        }
-        container.style.cursor = 'auto';
-    }
-
-   /************************************************************************************/
-   /************************************************************************************/
-   /***************************** request for the next frame  **************************/
-   /************************************************************************************/
-   /************************************************************************************/
-
-    function animate() {
-        setTimeout(function() {
-            requestAnimationFrame(animate);
-            render();
-        }, 1000 / 25); // decrease the frame rate to 25 fps
-    }
-
-   /************************************************************************************/
-   /************************************************************************************/
-   /************************ get the two coordinates of the bond  **********************/
-   /************************************************************************************/
-   /************************************************************************************/
-
-    function getBondPosition(atom1, atom2){
-        var pos1Copy1 = atom1.position.clone(),
-            pos2Copy1 = atom2.position.clone(),
-            dir = pos1Copy1.sub(pos2Copy1).normalize(),
-            dirCopy = dir.clone(),
-            size1 = atom1.radius,
-            size2 = atom2.radius,
-            pos1Copy2 = atom1.position.clone(),
-            pos2Copy2 = atom2.position.clone(),
-            pos1Final = pos1Copy2.sub(dir.multiplyScalar(size1)),
-            pos2Final = pos2Copy2.add(dirCopy.multiplyScalar(size2))
-            // console.log(size1 + "," + size2)
-
-        return {"p1" : pos1Final, "p2" : pos2Final}
-    }
-
-   /************************************************************************************/
-   /************************************************************************************/
-   /********** update the scene according to the different display types  **************/
-   /************************************************************************************/
-   /************************************************************************************/
-
-    function updateScene() {
-        var objects = scene.children
-
-        objects.forEach(function(obj) {
-            if (obj._class == "axis" || obj._class == "tick"){
-                obj.visible = options.axes
-            }
-
-            if (obj._class == "axisText"){
-                obj.visible = (options.displayOption == "position") && (options.axes == true)
-            }
-
-            // if this is a node (atom)
-            if (obj._class == "atom") {
-                var ids = obj.name.split(":")
-                var id = ids[1]
-                var node = system.getNode(id)
-
-              if(options.displayOption == "position" && !SELECTED){
+	<script>
+		var container;
+		var camera, controls, scene, renderer;
+		var optionController;
+		var timestep;
+		var energyVal = 0;
+		var systemOption;
+		var objects = [];
+		var plane = new THREE.Plane();
+		var raycaster = new THREE.Raycaster();
+		var mouse = new THREE.Vector2(),
+		offset = new THREE.Vector3(),
+		intersection = new THREE.Vector3(),
+		INTERSECTED, SELECTED, 
+		systemName = "H2",//"Hydrogen"
+		system = systems[systemName], // which system to show, Water, Hydrogen, Oxygen 
+        energyHistory = [];
+		init();
+		animate();
+
+		function init() {
+			container = document.createElement( 'div' );
+			document.body.appendChild( container );
+			camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
+			camera.position.z = 1000;
+			scene = new THREE.Scene();
+			scene.add( new THREE.AmbientLight( 0x505050 ) );
+			var light = new THREE.SpotLight( 0xffffff, 1.5 );
+			light.position.set( 0, 500, 2000 );
+			scene.add( light );
+
+
+		    var atomList = system.getNodeList();
+
+			atomList.forEach(function(node){
+				node.atom.name = "atom:" + node.aid;
+				node.atom.moleculeName = node.name
+				console.log(node)
+				scene.add(node.atom);
+				objects.push(node.atom)
+
+				node.edges.forEach(function(edge){
+					if(edge.getVisited() == false){
+						var lineGeo = new THREE.Geometry()
+						var lineMaterial = new THREE.LineBasicMaterial({ color: 0xAAAAAA, linewidth: 50 })
+						
+						lineGeo.vertices.push(edge.atom1.position)
+						lineGeo.vertices.push(edge.atom2.position)
+						var line = new THREE.LineSegments(lineGeo, lineMaterial);
+						
+						line.name = "line:" + edge.atom1.aid + ":" + edge.atom2.aid
+					    
+					    scene.add(line)
+					    // objects.push(line)
+					    edge.setVisited()
+					}
+				})
+			})
+
+			renderer = new THREE.WebGLRenderer( { antialias: true } );
+			renderer.setClearColor( 0xf0f0f0 );
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.sortObjects = false;
+			container.appendChild( renderer.domElement );
+
+			// placing title
+			var title = document.createElement( 'div' );
+			title.style.position = 'absolute';
+			title.style.top = '10px';
+			title.style.textAlign = 'center';
+			title.style.width = '100%';
+			title.innerHTML = 'Interactive Atomistic Environment for ' + systemName;
+			
+			// placing energy marker
+			var energy = document.createElement( 'div' );
+			energy.style.position = 'absolute';
+			energy.style.bottom = '10px';
+			energy.style.textAlign = 'left';
+			energy.style.width = '100%';
+			energy.innerHTML = 'Energy (J): <span id="energyVal" ></span>';
+
+			// placing 'on' marker
+			var text = document.createElement( 'div' );
+			text.style.position = 'absolute';
+			text.style.bottom = '30px';
+			text.style.textAlign = 'left';
+			text.style.width = '100%';
+			text.innerHTML = 'On: <span id="moleculeName" ></span>';
+
+			// placing ruler
+//			var rulerGeo = new THREE.Geometry()
+//			var rulerMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 50 })
+//			rulerGeo.vertices.push(new THREE.Vector3(-900, -300, 0))
+//			rulerGeo.vertices.push(new THREE.Vector3(-900, -300 + 285, 0))
+//			var ruler = new THREE.LineSegments(rulerGeo, rulerMaterial);
+//			scene.add(ruler)
+
+			container.appendChild( title );
+			container.appendChild( energy );
+			container.appendChild( text );
+
+			setupOptions()
+
+			renderer.domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
+			renderer.domElement.addEventListener( 'mousedown', onDocumentMouseDown, false );
+			renderer.domElement.addEventListener( 'mouseup', onDocumentMouseUp, false );
+
+			controls = new THREE.TrackballControls( camera, renderer.domElement );
+			controls.rotateSpeed = 7.0;
+			controls.zoomSpeed = 1.2;
+			controls.panSpeed = 0.8;
+			controls.noZoom = false;
+			controls.noPan = false;
+			controls.staticMoving = true;
+			controls.dynamicDampingFactor = 0.3;
+			
+			window.addEventListener( 'resize', onWindowResize, false );
+		}
+
+		function setupOptions() {
+			// initializing options
+			optionController = {
+				timestep: 0.05,
+				systemOption: "H2" ///???????
+				};
+
+			var folder;
+			var gui = new dat.GUI();
+			
+			// simulation controls
+			folder = gui.addFolder( "Simulation Controls" );
+			folder.add( optionController, "timestep", 0.01, 2.0, 0.01 ).name( "Timestep (s)" ).onChange( render );
+			
+			// setup system
+			folder = gui.addFolder( "Setup System" );
+			folder.add( optionController, "systemOption", [ "H2", "O2", "H2O", "Option4", "Option5", "Option6" ] ).name( "System" ).onChange( render );
+
+			var buttonReset = {
+			    resetSys: function() {
+				resetSys();
+			    }
+			};
+			folder.add( buttonReset, 'resetSys' ).name( "Reset System" );
+
+			gui.close();
+		}
+		function onWindowResize() {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+		}
+		function onDocumentMouseMove( event ) {
+			event.preventDefault();
+			mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+			mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+			raycaster.setFromCamera( mouse, camera );
+			if ( SELECTED ) {
+				if ( raycaster.ray.intersectPlane( plane, intersection ) ) {
+					SELECTED.position.copy( intersection.sub( offset ) );
+				}
+				return;
+			}
+			var intersects = raycaster.intersectObjects( objects );
+			if ( intersects.length > 0 ) {
+				if ( INTERSECTED != intersects[ 0 ].object ) {
+					if ( INTERSECTED ) 
+						INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+						INTERSECTED = intersects[ 0 ].object;
+						plane.setFromNormalAndCoplanarPoint(
+							camera.getWorldDirection( plane.normal ),
+							INTERSECTED.position );
+						INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+						INTERSECTED.material.emissive.setHex( 0x754200 );
+				}
+				container.style.cursor = 'pointer';
+	
+				document.getElementById( 'moleculeName' ).innerText = INTERSECTED.moleculeName
+
+				var ids = INTERSECTED.name.split(":")
+					var id = ids[1]
+					var node = system.getNode(id)
+                    node.setPosition(INTERSECTED.position)
+
+			} else {
+				if ( INTERSECTED )
+				INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+				INTERSECTED = null;
+				container.style.cursor = 'auto';
+				document.getElementById( 'moleculeName' ).innerText = ""
+			}
+		}
+		function onDocumentMouseDown( event ) {
+			event.preventDefault();
+			raycaster.setFromCamera( mouse, camera );
+			var intersects = raycaster.intersectObjects( objects );
+			if ( intersects.length > 0 ) {
+				controls.enabled = false;
+				SELECTED = intersects[ 0 ].object;
+				if ( raycaster.ray.intersectPlane( plane, intersection ) ) {
+					offset.copy( intersection ).sub( SELECTED.position );
+				}
+				container.style.cursor = 'move';
+			}
+		}
+		function onDocumentMouseUp( event ) {
+			event.preventDefault();
+			controls.enabled = true;
+			if ( INTERSECTED ) {
+				SELECTED = null;
+			}
+			container.style.cursor = 'auto';
+		}
+
+		function animate(ts) { 
+		    setTimeout(function () { 
+		    requestAnimationFrame(animate); 
+		    render();}
+		    , 1000 / 25); // decrease the frame rate
+		}
+		function setEnergy() {
+			energyVal = SELECTED.position.x;
+			document.getElementById( 'energyVal' ).innerText = energyVal;
+		}
+
+		function resetSys() {
+//			systemName = optionController.systemOption;
+//			system = systems[systemName];
+
+    		// restarting scene
+//			clearScene();
+//			init();
+//			animate();
+		}
+
+		// fill in
+		function clearScene() {
+		}
+
+		function updatePosition(){
+            var objects = scene.children
+
+			objects.forEach(function(obj){
+				if(obj.type == "Mesh"){
+					var ids = obj.name.split(":")
+					var id = ids[1]
+					var node = system.getNode(id)
                     obj.position.x = node.position.x
                     obj.position.y = node.position.y
                     obj.position.z = node.position.z
-                    obj.material.opacity = 1
-               }
+				}
 
-               if (options.displayOption == "momentum space") {
-                    obj.position.x = node.velocity.x * node.mass * parameters[options.systemOption].momentumScale
-                 	obj.position.y = node.velocity.y * node.mass * parameters[options.systemOption].momentumScale
-                    obj.position.z = node.velocity.z * node.mass * parameters[options.systemOption].momentumScale
-                    obj.material.opacity = 1
-               }
+				if(obj.type == "LineSegments"){
+					var ids = obj.name.split(":")
+				    var aid1 = ids[1], aid2 = ids[2]    
+                    var atom1 = scene.getObjectByName("atom:" + aid1)
+                    var atom2 = scene.getObjectByName("atom:" + aid2);
+                    var p1 = atom1.position, p2 = atom2.position
+                    var dist = p1.distanceTo(p2)
 
-               if (options.displayOption == "energy space") {
-                    obj.position.x = node.position_.x
-                    obj.position.y = node.position_.y
+                    obj.geometry.vertices[0]= p1.clone()
+                    obj.geometry.vertices[1]= p2.clone()
 
-                    obj.position.z = (0.2 + 0.9 * node.energy / node.maxEnergy) * settings.energyUnitScale
-                    if(!obj.position.z)
-                        obj.position.z = 0
-               }
-
-                // opacity corresponds to energy
-                // NOTE --- need to put up a legend on the side so the user knows what opacity corresponds to what energy (will be dynamic)
-                if (options["energy as opacity"]) {
-                    if (node.maxEnergy != 0) {
-                        obj.material.opacity = 0.2 + 0.9 * node.energy / node.maxEnergy
-                    }
-                    if (node.maxEnergy == 0) {
-                        obj.material.opacity = 1
-                    }
-                }
-               
-               if (options["momentum as vector"]){
-                    if (!options["energy as opacity"]) {
-                        obj.material.opacity *= 0.7
-                    } 
-               }
-               
-                obj.material.needsUpdate = true
-                obj.material.transparent = true
-                obj.visible = true
-            }
-
-            if(obj._class  == "atomcenter"){
-                var atom = scene.getObjectByName("atom:" + obj.aid)
-                obj.position.x = atom.position.x
-                obj.position.y = atom.position.y
-                obj.position.z = atom.position.z
-            }
-
-            // if this is a bond
-            if (obj._class == "bond") {
-                var ids = obj.name.split(":")
-                var aid1 = ids[1],
-                    aid2 = ids[2]
-                var atom1 = scene.getObjectByName("atom:" + aid1)
-                var atom2 = scene.getObjectByName("atom:" + aid2);
-                var p1 = atom1.position,
-                    p2 = atom2.position
-                var dist = p1.distanceTo(p2)
-                var bondPos = getBondPosition(atom1, atom2)
-                obj.geometry.vertices[0] = bondPos.p1
-                obj.geometry.vertices[1] = bondPos.p2
-
-                obj.geometry.verticesNeedUpdate = true
-
-                obj.material.opacity = dist > parameters[options.systemOption].opacityThresholdScale ? 0 : (1 - dist / parameters[options.systemOption].opacityThresholdScale)
-                obj.material.needsUpdate = true
-                obj.material.transparent = true
-            }
-            
-            // if this the vector of momentum
-            if(options.displayOption != "momentum space" && obj._class == "momentum"){
-                obj.visible = false
-            }
-            // if this the vector of momentum
-            if(options["momentum as vector"] == true && obj._class == "momentum"){
-                obj.visible = true
-                var id = obj.name.split(":")[1]
-                var node = system.getNode(id)
-                    obj.geometry.vertices[0] = node.atom.position.clone()
-                    obj.geometry.vertices[1] = node.getMomentum()
-                                                   .multiplyScalar(
-                                                   parameters[options.systemOption].momentumScale)
-                                                   .add(node.atom.position) 
                     obj.geometry.verticesNeedUpdate = true
 
-            }
-        })
-    }
+                    obj.material.opacity = dist > settings.opacityThresholdScale ? 0 : (1 - dist / settings.opacityThresholdScale)
+                    obj.material.needsUpdate = true
+                    obj.material.transparent = true
+			    }
+			})
+			energyHistory.push(system.getEnergy())
+			if(energyHistory.length < 500){ // keep only 500 history
+				energyHistory.shift()
+			}
+			document.getElementById( 'energyVal' ).innerText = parseFloat(system.getEnergy()).toFixed(4);
+		}
+		
 
-   /************************************************************************************/
-   /************************************************************************************/
-   /************* draw the historical energy as a canvas at the bottom  ****************/
-   /************************************************************************************/
-   /************************************************************************************/
+		function render() {
+			updatePosition()
+			controls.update();
+			system.recomputeForceAcc()
+			system.updateNodes()
+			renderer.render( scene, camera );
 
-    function drawEnergyHistory(){
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        var maxEnergy = Math.max.apply(null, settings.energyHistory)
-
-        if (settings.energyHistory > 0)
-            context.moveTo(0, canvas.height - canvas.height * settings.energyHistory[i] / maxEnergy);
-        else
-            context.moveTo(0, canvas.height);
-
-        var x = 0,
-            y = 0;
-        context.beginPath();
-        for (var i = 0; i < settings.energyHistory.length; i++) {
-            x = i;
-            if (maxEnergy == 0) {
-                // push down a little bit to avoid cutting tops and bottoms
-                y = canvas.height - 1
-            } else {
-                y = canvas.height - 1 - (canvas.height - 2) * settings.energyHistory[i] / maxEnergy
-            }
-            context.lineTo(x, y);
-        }
-        context.stroke();
-    }
-
-   /************************************************************************************/
-   /************************************************************************************/
-   /************ called all the time when requesting for the next frame  ***************/
-   /************************************************************************************/
-   /************************************************************************************/
-
-    function render() {
-        controls.update();
-        // only update forces and energies if an atom is not currently clicked on
-        settings.timeStep = options.timestep
-        
-        if(INTERSECTED){
-            document.getElementById('selectEnergy').innerText 
-            = system.getNode(+INTERSECTED.aid).energy.toFixed(4)
-        }
-
-        if(options.displayOption == "position"){
-            if(rollBackPosition == true){
-                system.updateCurrentPositionToOldPositionForAll()
-                rollBackPosition = false
-            }
-            enableMouseSelection = true
-        } else {
-            rollBackPosition = true
-            enableMouseSelection = false
-        }
-
-        if (SELECTED == null){
-                // system energy
-                settings.energyHistory.push(system.getEnergy())
-                if (settings.energyHistory.length > settings.maxHistory) { // keep only 500 history
-                    settings.energyHistory.shift()
-                }
-                document.getElementById('energyVal').innerText = parseFloat(system.getEnergy()).toFixed(4);
-
-                // forces & atom energy
-                system.getForceAcc()
-                system.updateNodes()
-        } else if (SELECTED != null && SELECTED._class == "atom") {
-                var selectID = SELECTED.name.split(':')[1]
-                if(options.displayOption == "position"){
-                    system.copyAtomPositionToNodePosition(+selectID)
-                    system.updateOldPositionToCurrentPosition(+selectID)
-                }
-                system.updateEnergyForAll()
-        }
-
-        drawEnergyHistory();
-        updateScene();
-        
-        // try to move the camera
-        // var box = system.getBoundingBox()
-
-        // console.log(box)
-        // if(box.x1 < -innerWidth / 2.0 || box.x2 > innerWidth / 2.0 ||
-        //    box.y1 < -innerHeight / 2.0 || box.y2 > innerHeight / 2.0 ){
-        //      camera = new THREE.OrthographicCamera( box.x1, 
-        //                                             box.x2, 
-        //                                             box.y2, 
-        //                                             box.y1, -500, 1000 );
-        //      camera.position.x = (box.x1 + box.x2) / 2.0;
-        //      camera.position.y = (box.y1 + box.y2) / 2.0;
-        //      camera.position.z = 800;
-        //      camera.aspect = (box.x1 + box.x2) / (box.y1 + box.y2);
-        //      renderer.setSize((box.x2 - box.x1), (box.y2 - box.y1));
-        //      camera.updateProjectionMatrix()
-        // }
-        
-        renderer.render(scene, camera);
-    }
-    </script>
+		}
+	</script>
 </body>
-
 </html>
