@@ -684,11 +684,11 @@
                 obj.material.transparent = true
             }
             
-            // if this the vector of memontum
+            // if this the vector of momentum
             if(options.displayOption != "momentum space" && obj._class == "momentum"){
                 obj.visible = false
             }
-            // if this the vector of memontum
+            // if this the vector of momentum
             if(options["momentum as vector"] == true && obj._class == "momentum"){
                 obj.visible = true
                 var id = obj.name.split(":")[1]
@@ -753,7 +753,7 @@
 
         if(options.displayOption == "position"){
             if(rollBackPosition == true){
-                // system.updateCurrentPositionToOldPositionForAll()
+                system.updateCurrentPositionToOldPositionForAll()
                 rollBackPosition = false
             }
             enableMouseSelection = true
