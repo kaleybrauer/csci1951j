@@ -55,7 +55,7 @@
    /************************************************************************************/
    
     function init() {
-        settings.maxHistory = window.innerWidth -  165;
+        settings.maxHistory = window.innerWidth - 165;
         container = document.createElement('div');
         document.body.appendChild(container);
         // using orthographic camera
@@ -87,22 +87,22 @@
         // placing energy marker
         var energy = document.createElement('div');
         energy.style.position = 'absolute';
-        energy.style.bottom = '85px';
+        energy.style.bottom = '30px';
         energy.style.textAlign = 'left';
         energy.style.width = '100%';
         energy.innerHTML = 'Energy (J): <span id="energyVal" ></span>';
 
-        var instruction = document.createElement('div');
+       /* var instruction = document.createElement('div');
         instruction.style.position = 'absolute';
         instruction.style.bottom = '10px';
         instruction.style.textAlign = 'left';
-        instruction.style.width = '100%';
+        instruction.style.width = '100%';*/
         // instruction.innerHTML = 'Open the controls on the top right corner, you can find: <b>position mode</b>, atoms are placed in the physical space; <b>momentum space</b>, atoms are placed in the space according to their current momentum; <b>energy space</b>, atoms are placed in the space according to their current energy. If the boxes in the Display Controls are checked, the <b>opacity</b> of each atom corresponds to its <b>energy</b> while the <b>small line</b> in its center corresponds to its <b>momentum</b>. Feel free to <b>zoom</b>, <b>drag</b>, and <b>rotate</b>. To reset the system to its equilibrium position, click <b>Reset System</b>.';
 
         // placing 'on' marker
         var text = document.createElement('div');
         text.style.position = 'absolute';
-        text.style.bottom = '65px';
+        text.style.bottom = '10px';
         text.style.textAlign = 'left';
         text.style.width = '100%';
         text.innerHTML = 'Unit = 1:' + settings.unitScale + ' | Mouse is on: <span id="atomName" ></span> | Energy is <span id="selectEnergy" ></span>. ';
@@ -110,7 +110,7 @@
         canvas.width = settings.maxHistory;
         canvas.height = settings.maxHistory / 40;
         canvas.style.position = 'absolute';
-        canvas.style.bottom = "90px";
+        canvas.style.bottom = "30px";
         canvas.style.left = '150px';
         canvas.style.right = '10px';
 
@@ -118,7 +118,7 @@
         container.appendChild(energy);
         container.appendChild(text);
         container.appendChild(canvas);
-        container.appendChild(instruction);
+        //container.appendChild(instruction);
 
         setupOptions();
 
